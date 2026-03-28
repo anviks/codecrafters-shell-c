@@ -53,6 +53,7 @@ int main(int argc, char* argv[]) {
                 }
                 printf("%s: not found\n", args);
             path_found:
+                free(path_env);
             }
         } else {
             printf("%s: command not found\n", command);
