@@ -123,6 +123,7 @@ int main() {
                 char* expanded = malloc(strlen(path) + strlen(home));
                 strcpy(expanded, home);
                 strcpy(expanded + strlen(home), path + 1);
+                free(path);
                 path = expanded;
             }
             DIR* d = opendir(path);
