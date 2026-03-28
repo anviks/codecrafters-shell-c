@@ -66,25 +66,23 @@ int main(int argc, char* argv[]) {
         } else {
             char *arg, *arg_state;
             arg = strtok_r(strdup(command), " ", &arg_state);
-            // printf("Arg: %s\n", arg);
             char* exec_path = find_executable(arg);
             if (!exec_path) {
                 printf("%s: command not found\n", command);
                 continue;
             }
 
-            // printf("%s\n", command + strlen(arg) + 1);
-
             pid_t pid = fork();
 
             if (pid == 0) {
-                static char* argv[] = {};
-                char buf[1024];
-                snprintf(buf, sizeof(buf), "%s %s", exec_path, command + strlen(arg) + 1);
-                execv(buf, argv);
-                // while (arg != NULL) {
-                //     arg = strtok_r(NULL, " ", &arg_state);
-                // }
+                char** argv = malloc(1024);
+                int i = 0;
+                while (arg != NULL) {
+                    argv[i++] = arg;
+                    arg = strtok_r(NULL, " ", &arg_state);
+                }
+                argv[i] = NULL;
+                execv(exec_path, argv);
             }
         }
     }
