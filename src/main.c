@@ -1,5 +1,14 @@
+#include <dirent.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+#ifdef _WIN32
+#define PATH_LIST_SEPARATOR ";"
+#else
+#define PATH_LIST_SEPARATOR ":"
+#endif
 
 int main(int argc, char* argv[]) {
     // Flush after every printf
@@ -21,7 +30,26 @@ int main(int argc, char* argv[]) {
             if (strcmp(args, "echo") == 0 || strcmp(args, "exit") == 0 || strcmp(args, "type") == 0) {
                 printf("%s is a shell builtin\n", args);
             } else {
+                char* path_env = getenv("PATH");
+                char *path, *path_state;
+                path = strtok_r(path_env, PATH_LIST_SEPARATOR, &path_state);
+                while (path != NULL) {
+                    DIR* d = opendir(path);
+                    struct dirent* dir;
+                    if (d) {
+                        while ((dir = readdir(d)) != NULL) {
+                            if (strcmp(dir->d_name, args) == 0) {
+                                printf("%s/%s\n", path, args);
+                                closedir(d);
+                                goto path_found;
+                            }
+                        }
+                        closedir(d);
+                    }
+                    path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
+                }
                 printf("%s: not found\n", args);
+                path_found:
             }
         } else {
             printf("%s: command not found\n", command);
