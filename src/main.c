@@ -13,9 +13,16 @@ int main(int argc, char* argv[]) {
 
         if (strcmp(command, "") == 0) continue;
         if (strcmp(command, "exit") == 0) break;
-        
+
         if (strncmp(command, "echo ", 5) == 0) {
             printf("%s\n", command + 5);
+        } else if (strncmp(command, "type ", 5)) {
+            char* args = command + 5;
+            if (strcmp(args, "echo") == 0 || strcmp(args, "exit") == 0 || strcmp(args, "type") == 0) {
+                printf("%s is a shell builtin\n", args);
+            } else {
+                printf("%s: not found\n", args);
+            }
         } else {
             printf("%s: command not found\n", command);
         }
