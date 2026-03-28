@@ -65,7 +65,10 @@ int main() {
             char c = command[i];
             switch (state) {
                 case NORMAL:
-                    if (c == '\'') state = IN_SINGLE_QUOTE;
+                    if (c == '\\') {
+                        running_arg[running_arg_i++] = command[++i];
+                    }
+                    else if (c == '\'') state = IN_SINGLE_QUOTE;
                     else if (c == '"') state = IN_DOUBLE_QUOTE;
                     else if (c == ' ') {
                         if (running_arg_i > 0) {
