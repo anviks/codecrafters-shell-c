@@ -79,6 +79,7 @@ int main(int argc, char* argv[]) {
                 int i = 0;
                 while (arg != NULL) {
                     argv[i++] = arg;
+                    printf("%d: %s\n", i, arg);
                     arg = strtok_r(NULL, " ", &arg_state);
                 }
                 argv[i] = NULL;
