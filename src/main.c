@@ -86,15 +86,7 @@ int main() {
                     }
                     break;
                 case IN_DOUBLE_QUOTE:
-                    if (c == '\\') {
-                        char next = command[++i];
-                        running_arg[running_arg_i++] = next;
-                        // if (next == 'n') {
-                        //     running_arg[running_arg_i++] = '\n';
-                        // } else {
-                        //     running_arg[running_arg_i++] = next;
-                        // }
-                    }
+                    if (c == '\\') running_arg[running_arg_i++] = command[++i];
                     else if (c == '"') state = NORMAL;
                     else {
                         running_arg[running_arg_i++] = c;
