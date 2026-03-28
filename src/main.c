@@ -56,7 +56,12 @@ int main(int argc, char* argv[]) {
             printf("%s\n", command + 5);
         } else if (strncmp(command, "type ", 5) == 0) {
             char* args = command + 5;
-            if (strcmp(args, "echo") == 0 || strcmp(args, "exit") == 0 || strcmp(args, "type") == 0) {
+            if (
+                strcmp(args, "echo") == 0
+                || strcmp(args, "exit") == 0
+                || strcmp(args, "type") == 0
+                || strcmp(args, "pwd") == 0
+            ) {
                 printf("%s is a shell builtin\n", args);
             } else {
                 char* exec_path = find_executable(args);
