@@ -117,7 +117,7 @@ int main() {
             getcwd(cwd, sizeof(cwd));
             printf("%s\n", cwd);
         } else if (strncmp(command, "cd ", 3) == 0) {
-            char* path = command + 3;
+            char* path = strdup(command + 3);
             if (strncmp(path, "~", 1) == 0) {
                 char* home = getenv("HOME");
                 char* expanded = malloc(strlen(path) + strlen(home));
