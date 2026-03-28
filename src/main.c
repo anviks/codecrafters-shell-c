@@ -22,7 +22,7 @@ char* find_executable(char* name) {
         if (d) {
             while ((dir = readdir(d)) != NULL) {
                 char* fullpath = malloc(strlen(path) + strlen(name) + 2);
-                snprintf(fullpath, strlen(fullpath) + 1, "%s/%s", path, name);
+                snprintf(fullpath, strlen(path) + strlen(name) + 2, "%s/%s", path, name);
 
                 if (strcmp(dir->d_name, name) == 0 && access(fullpath, X_OK) == 0) {
                     closedir(d);
