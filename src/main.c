@@ -38,7 +38,8 @@ int main(int argc, char* argv[]) {
                     struct dirent* dir;
                     if (d) {
                         while ((dir = readdir(d)) != NULL) {
-                            if (strcmp(dir->d_name, args) == 0) {
+                            if (strcmp(dir->d_name, args) == 0 &&
+                                access(strcat(strcat(strdup(path), "/"), args), X_OK)) {
                                 printf("%s/%s\n", path, args);
                                 closedir(d);
                                 goto path_found;
@@ -49,7 +50,7 @@ int main(int argc, char* argv[]) {
                     path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
                 }
                 printf("%s: not found\n", args);
-                path_found:
+            path_found:
             }
         } else {
             printf("%s: command not found\n", command);
