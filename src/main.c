@@ -79,6 +79,10 @@ int main(int argc, char* argv[]) {
             printf("%s\n", cwd);
         } else if (strncmp(command, "cd ", 3) == 0) {
             char* path = command + 3;
+            if (strcmp(path, "~") == 0) {
+                chdir(getenv("HOME"));
+                continue;
+            }
             DIR* d = opendir(path);
             if (d) {
                 closedir(d);
