@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #ifdef _WIN32
@@ -9,6 +10,32 @@
 #else
 #define PATH_LIST_SEPARATOR ":"
 #endif
+
+char* find_executable(char* name) {
+    char* path_env = strdup(getenv("PATH"));
+    char *path, *path_state;
+    path = strtok_r(path_env, PATH_LIST_SEPARATOR, &path_state);
+    while (path != NULL) {
+        DIR* d = opendir(path);
+        struct dirent* dir;
+        if (d) {
+            while ((dir = readdir(d)) != NULL) {
+                char* fullpath = malloc(strlen(path) + strlen(name) + 2);
+                snprintf(fullpath, sizeof(fullpath), "%s/%s", path, name);
+
+                if (strcmp(dir->d_name, name) == 0 && access(fullpath, X_OK) == 0) {
+                    closedir(d);
+                    free(path_env);
+                    return fullpath;
+                }
+            }
+            closedir(d);
+        }
+        path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
+    }
+    free(path_env);
+    return NULL;
+}
 
 int main(int argc, char* argv[]) {
     // Flush after every printf
@@ -30,33 +57,34 @@ int main(int argc, char* argv[]) {
             if (strcmp(args, "echo") == 0 || strcmp(args, "exit") == 0 || strcmp(args, "type") == 0) {
                 printf("%s is a shell builtin\n", args);
             } else {
-                char* path_env = strdup(getenv("PATH"));
-                char *path, *path_state;
-                path = strtok_r(path_env, PATH_LIST_SEPARATOR, &path_state);
-                while (path != NULL) {
-                    DIR* d = opendir(path);
-                    struct dirent* dir;
-                    if (d) {
-                        while ((dir = readdir(d)) != NULL) {
-                            char fullpath[strlen(path) + strlen(args) + 2];
-                            snprintf(fullpath, sizeof(fullpath), "%s/%s", path, args);
-
-                            if (strcmp(dir->d_name, args) == 0 && access(fullpath, X_OK) == 0) {
-                                printf("%s\n", fullpath);
-                                closedir(d);
-                                goto path_found;
-                            }
-                        }
-                        closedir(d);
-                    }
-                    path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
-                }
-                printf("%s: not found\n", args);
-            path_found:
-                free(path_env);
+                char* exec_path = find_executable(args);
+                if (exec_path)
+                    printf("%s\n", exec_path);
+                else
+                    printf("%s: not found\n", args);
             }
         } else {
-            printf("%s: command not found\n", command);
+            char *arg, *arg_state;
+            arg = strtok_r(strdup(command), " ", &arg_state);
+            char* exec_path = find_executable(arg);
+            if (!exec_path) {
+                printf("%s: command not found\n", command);
+                continue;
+            }
+
+            printf("%s\n", command + strlen(arg) + 1);
+
+            pid_t pid = fork();
+
+            if (pid == 0) {
+                static char* argv[] = {};
+                char buf[1024];
+                snprintf(buf, sizeof(buf), "%s %s", exec_path, command + strlen(arg) + 1);
+                execv(buf, argv);
+                // while (arg != NULL) {
+                //     arg = strtok_r(NULL, " ", &arg_state);
+                // }
+            }
         }
     }
 
