@@ -41,7 +41,7 @@ char* find_executable(char* name) {
     return NULL;
 }
 
-typedef enum { NORMAL, IN_SINGLE_QUOTE } State;
+typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
 
 int main() {
     // Flush after every printf
@@ -66,6 +66,7 @@ int main() {
             switch (state) {
                 case NORMAL:
                     if (c == '\'') state = IN_SINGLE_QUOTE;
+                    else if (c == '"') state = IN_DOUBLE_QUOTE;
                     else if (c == ' ') {
                         if (running_arg_i > 0) {
                             running_arg[running_arg_i] = '\0';
@@ -79,6 +80,12 @@ int main() {
                     break;
                 case IN_SINGLE_QUOTE:
                     if (c == '\'') state = NORMAL;
+                    else {
+                        running_arg[running_arg_i++] = c;
+                    }
+                    break;
+                case IN_DOUBLE_QUOTE:
+                    if (c == '"') state = NORMAL;
                     else {
                         running_arg[running_arg_i++] = c;
                     }
