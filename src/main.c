@@ -41,7 +41,9 @@ char* find_executable(char* name) {
     return NULL;
 }
 
-int main(int argc, char* argv[]) {
+typedef enum { NORMAL, IN_SINGLE_QUOTE } State;
+
+int main() {
     // Flush after every printf
     setbuf(stdout, NULL);
 
@@ -54,8 +56,51 @@ int main(int argc, char* argv[]) {
         if (strcmp(command, "") == 0) continue;
         if (strcmp(command, "exit") == 0) break;
 
+        State state = NORMAL;
+        char** argv = malloc(1024 * sizeof(char*));
+        int argv_i = 0;
+        char* running_arg = malloc(1024);
+        int running_arg_i = 0;
+        for (int i = 0; command[i] != '\0'; i++) {
+            char c = command[i];
+            switch (state) {
+                case NORMAL:
+                    if (c == '\'') state = IN_SINGLE_QUOTE;
+                    else if (c == ' ') {
+                        if (running_arg_i > 0) {
+                            running_arg[running_arg_i] = '\0';
+                            // printf("Running arg: %s\n", running_arg);
+                            argv[argv_i++] = strdup(running_arg);
+                            running_arg_i = 0;
+                        }
+                    }
+                    else {
+                        running_arg[running_arg_i++] = c;
+                    }
+                    break;
+                case IN_SINGLE_QUOTE:
+                    if (c == '\'') state = NORMAL;
+                    else {
+                        running_arg[running_arg_i++] = c;
+                    }
+                    break;
+            }
+        }
+        running_arg[running_arg_i] = '\0';
+        argv[argv_i++] = strdup(running_arg);
+        argv[argv_i] = NULL;
+
+        for (int i = 0; argv[i] != NULL; i++) {
+            printf("%s\n", argv[i]);
+        }
+
         if (strncmp(command, "echo ", 5) == 0) {
-            printf("%s\n", command + 5);
+            // printf("%s\n", command + 5);
+            printf("%s", argv[1]);
+            for (int i = 2; argv[i] != NULL; i++) {
+                printf(" %s", argv[i]);
+            }
+            printf("\n");
         } else if (strncmp(command, "type ", 5) == 0) {
             char* args = command + 5;
             if (
@@ -106,13 +151,6 @@ int main(int argc, char* argv[]) {
             pid_t pid = fork();
 
             if (pid == 0) {
-                char** argv = malloc(1024 * sizeof(char*));
-                int i = 0;
-                while (arg != NULL) {
-                    argv[i++] = arg;
-                    arg = strtok_r(NULL, " ", &arg_state);
-                }
-                argv[i] = NULL;
                 execv(exec_path, argv);
                 exit(127);
             } else {
