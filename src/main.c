@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
                     if (d) {
                         while ((dir = readdir(d)) != NULL) {
                             if (strcmp(dir->d_name, args) == 0 &&
-                                access(strcat(strcat(strdup(path), "/"), args), X_OK)) {
+                                access(strcat(strcat(strdup(path), "/"), args), X_OK) == 0) {
                                 printf("%s/%s\n", path, args);
                                 closedir(d);
                                 goto path_found;
