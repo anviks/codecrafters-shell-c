@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <linux/limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -64,6 +65,10 @@ int main(int argc, char* argv[]) {
                 else
                     printf("%s: not found\n", args);
             }
+        } else if (strncmp(command, "pwd ", 4) == 0) {
+            char cwd[PATH_MAX];
+            getcwd(cwd, sizeof(cwd));
+            printf("%s\n", cwd);
         } else {
             char *arg, *arg_state;
             arg = strtok_r(strdup(command), " ", &arg_state);
