@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
             pid_t pid = fork();
 
             if (pid == 0) {
-                char** argv = malloc(1024);
+                char** argv = malloc(1024 * sizeof(char*));
                 int i = 0;
                 while (arg != NULL) {
                     argv[i++] = arg;
