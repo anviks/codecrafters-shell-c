@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
                 else
                     printf("%s: not found\n", args);
             }
-        } else if (strncmp(command, "pwd ", 4) == 0) {
+        } else if (strcmp(command, "pwd") == 0) {
             char cwd[PATH_MAX];
             getcwd(cwd, sizeof(cwd));
             printf("%s\n", cwd);
