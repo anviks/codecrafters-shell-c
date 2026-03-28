@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
                     struct dirent* dir;
                     if (d) {
                         while ((dir = readdir(d)) != NULL) {
-                            char fullpath[strlen(path) + strlen(args) + 1];
+                            char fullpath[strlen(path) + strlen(args) + 2];
                             snprintf(fullpath, sizeof(fullpath), "%s/%s", path, args);
 
                             if (strcmp(dir->d_name, args) == 0 && access(fullpath, X_OK) == 0) {
