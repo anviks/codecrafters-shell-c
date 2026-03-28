@@ -77,9 +77,9 @@ int main(int argc, char* argv[]) {
             if (pid == 0) {
                 char** argv = malloc(1024);
                 int i = 0;
+                arg = strtok_r(NULL, " ", &arg_state);
                 while (arg != NULL) {
                     argv[i++] = arg;
-                    printf("%d: %s\n", i, arg);
                     arg = strtok_r(NULL, " ", &arg_state);
                 }
                 argv[i] = NULL;
