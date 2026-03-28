@@ -66,6 +66,7 @@ int main(int argc, char* argv[]) {
         } else {
             char *arg, *arg_state;
             arg = strtok_r(strdup(command), " ", &arg_state);
+            printf("Arg: %s\n", arg);
             char* exec_path = find_executable(arg);
             if (!exec_path) {
                 printf("%s: command not found\n", command);
