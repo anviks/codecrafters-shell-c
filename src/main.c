@@ -79,9 +79,12 @@ int main(int argc, char* argv[]) {
             printf("%s\n", cwd);
         } else if (strncmp(command, "cd ", 3) == 0) {
             char* path = command + 3;
-            if (strcmp(path, "~") == 0) {
-                chdir(getenv("HOME"));
-                continue;
+            if (strncmp(path, "~", 1) == 0) {
+                char* home = getenv("HOME");
+                char* expanded = malloc(strlen(path) + strlen(home));
+                strcpy(expanded, home);
+                strcpy(expanded + strlen(home), path + 1);
+                path = expanded;
             }
             DIR* d = opendir(path);
             if (d) {
@@ -90,6 +93,7 @@ int main(int argc, char* argv[]) {
             } else if (errno == ENOENT) {
                 printf("cd: %s: No such file or directory\n", path);
             }
+            free(path);
         } else {
             char *arg, *arg_state;
             arg = strtok_r(strdup(command), " ", &arg_state);
