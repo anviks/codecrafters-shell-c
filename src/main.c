@@ -1,4 +1,6 @@
+#include <asm-generic/errno-base.h>
 #include <dirent.h>
+#include <errno.h>
 #include <linux/limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,6 +63,7 @@ int main(int argc, char* argv[]) {
                 || strcmp(args, "exit") == 0
                 || strcmp(args, "type") == 0
                 || strcmp(args, "pwd") == 0
+                || strcmp(args, "cd") == 0
             ) {
                 printf("%s is a shell builtin\n", args);
             } else {
@@ -74,6 +77,15 @@ int main(int argc, char* argv[]) {
             char cwd[PATH_MAX];
             getcwd(cwd, sizeof(cwd));
             printf("%s\n", cwd);
+        } else if (strncmp(command, "cd ", 3) == 0) {
+            char* path = command + 3;
+            DIR* d = opendir(path);
+            if (d) {
+                closedir(d);
+                chdir(path);
+            } else if (errno == ENOENT) {
+                printf("cd: %s: No such file or directory\n", path);
+            }
         } else {
             char *arg, *arg_state;
             arg = strtok_r(strdup(command), " ", &arg_state);
