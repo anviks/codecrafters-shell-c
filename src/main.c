@@ -38,9 +38,11 @@ int main(int argc, char* argv[]) {
                     struct dirent* dir;
                     if (d) {
                         while ((dir = readdir(d)) != NULL) {
-                            if (strcmp(dir->d_name, args) == 0 &&
-                                access(strcat(strcat(strdup(path), "/"), args), X_OK) == 0) {
-                                printf("%s/%s\n", path, args);
+                            char fullpath[strlen(path) + strlen(args) + 1];
+                            snprintf(fullpath, sizeof(fullpath), "%s/%s", path, args);
+
+                            if (strcmp(dir->d_name, args) == 0 && access(fullpath, X_OK) == 0) {
+                                printf("%s\n", fullpath);
                                 closedir(d);
                                 goto path_found;
                             }
