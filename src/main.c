@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #ifdef _WIN32
@@ -83,6 +84,9 @@ int main(int argc, char* argv[]) {
                 }
                 argv[i] = NULL;
                 execv(exec_path, argv);
+                exit(127);
+            } else {
+                waitpid(pid, 0, 0);
             }
         }
     }
