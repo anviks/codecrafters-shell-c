@@ -7,6 +7,10 @@ int main(int argc, char *argv[]) {
 
   // TODO: Uncomment the code below to pass the first stage
   printf("$ ");
+  char command[1024];
+  fgets(command, sizeof(command), stdin);
+
+  printf("%s: command not found", command);
 
   return 0;
 }
