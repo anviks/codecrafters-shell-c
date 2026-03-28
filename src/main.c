@@ -69,7 +69,6 @@ int main() {
                     else if (c == ' ') {
                         if (running_arg_i > 0) {
                             running_arg[running_arg_i] = '\0';
-                            // printf("Running arg: %s\n", running_arg);
                             argv[argv_i++] = strdup(running_arg);
                             running_arg_i = 0;
                         }
@@ -90,12 +89,7 @@ int main() {
         argv[argv_i++] = strdup(running_arg);
         argv[argv_i] = NULL;
 
-        for (int i = 0; argv[i] != NULL; i++) {
-            printf("%s\n", argv[i]);
-        }
-
         if (strncmp(command, "echo ", 5) == 0) {
-            // printf("%s\n", command + 5);
             printf("%s", argv[1]);
             for (int i = 2; argv[i] != NULL; i++) {
                 printf(" %s", argv[i]);
