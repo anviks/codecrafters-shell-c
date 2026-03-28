@@ -75,16 +75,22 @@ int main() {
                             running_arg_i = 0;
                         }
                     }
-                    else running_arg[running_arg_i++] = c;
+                    else {
+                        running_arg[running_arg_i++] = c;
+                    }
                     break;
                 case IN_SINGLE_QUOTE:
                     if (c == '\'') state = NORMAL;
-                    else running_arg[running_arg_i++] = c;
+                    else {
+                        running_arg[running_arg_i++] = c;
+                    }
                     break;
                 case IN_DOUBLE_QUOTE:
                     if (c == '\\') running_arg[running_arg_i++] = command[++i];
                     else if (c == '"') state = NORMAL;
-                    else running_arg[running_arg_i++] = c;
+                    else {
+                        running_arg[running_arg_i++] = c;
+                    }
                     break;
             }
         }
