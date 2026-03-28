@@ -30,9 +30,9 @@ int main(int argc, char* argv[]) {
             if (strcmp(args, "echo") == 0 || strcmp(args, "exit") == 0 || strcmp(args, "type") == 0) {
                 printf("%s is a shell builtin\n", args);
             } else {
-                char* path_env = getenv("PATH");
+                char* path_env = strdup(getenv("PATH"));
                 char *path, *path_state;
-                path = strtok(path_env, PATH_LIST_SEPARATOR);
+                path = strtok_r(path_env, PATH_LIST_SEPARATOR, &path_state);
                 while (path != NULL) {
                     DIR* d = opendir(path);
                     struct dirent* dir;
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
                         }
                         closedir(d);
                     }
-                    path = strtok(NULL, PATH_LIST_SEPARATOR);
+                    path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
                 }
                 printf("%s: not found\n", args);
                 path_found:
