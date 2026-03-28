@@ -138,9 +138,7 @@ int main() {
             }
             free(path);
         } else {
-            char *arg, *arg_state;
-            arg = strtok_r(strdup(command), " ", &arg_state);
-            char* exec_path = find_executable(arg);
+            char* exec_path = find_executable(argv[0]);
             if (!exec_path) {
                 printf("%s: command not found\n", command);
                 continue;
