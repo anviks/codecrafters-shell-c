@@ -19,7 +19,12 @@
 
 static char* builtins[] = {"echo", "exit", "type", "pwd", "cd", NULL};
 
-char* find_executable(char* name) {
+struct Executable {
+    char* name;
+    char* path;
+};
+
+struct Executable find_executable(char* name, int is_partial) {
     char* path_env = strdup(getenv("PATH"));
     char *path, *path_state;
     path = strtok_r(path_env, PATH_LIST_SEPARATOR, &path_state);
@@ -28,13 +33,16 @@ char* find_executable(char* name) {
         struct dirent* dir;
         if (d) {
             while ((dir = readdir(d)) != NULL) {
-                char* fullpath = malloc(strlen(path) + strlen(name) + 2);
-                snprintf(fullpath, strlen(path) + strlen(name) + 2, "%s/%s", path, name);
-
-                if (strcmp(dir->d_name, name) == 0 && access(fullpath, X_OK) == 0) {
-                    closedir(d);
-                    free(path_env);
-                    return fullpath;
+                if (is_partial && strncmp(dir->d_name, name, strlen(name)) == 0 || !is_partial && strcmp(dir->d_name, name) == 0) {
+                    char* fullpath = malloc(strlen(path) + strlen(dir->d_name) + 2);
+                    snprintf(fullpath, strlen(path) + strlen(dir->d_name) + 2, "%s/%s", path, dir->d_name);
+        
+                    if (access(fullpath, X_OK) == 0) {
+                        closedir(d);
+                        free(path_env);
+                        struct Executable result = {.name = dir->d_name, .path = fullpath};
+                        return result;
+                    }
                 }
             }
             closedir(d);
@@ -42,7 +50,8 @@ char* find_executable(char* name) {
         path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
     }
     free(path_env);
-    return NULL;
+    struct Executable result = {NULL, NULL};
+    return result;
 }
 
 static struct termios orig_termios;
@@ -67,6 +76,15 @@ void handle_tab(char* command, int* index) {
             command[(*index)++] = ' ';
             return;
         }
+    }
+
+    char* name = find_executable(command, 1).name;
+    if (name) {
+        printf("%s ", name + *index);
+        *index = strlen(name);
+        strcpy(command, name);
+        command[(*index)++] = ' ';
+        return;
     }
 
     printf("%c", 7);  // Ring a bell
@@ -106,7 +124,7 @@ void handle_type(char** argv) {
         }
     }
 
-    char* exec_path = find_executable(argv[1]);
+    char* exec_path = find_executable(argv[1], 0).path;
     if (exec_path)
         printf("%s\n", exec_path);
     else
@@ -241,7 +259,7 @@ int main() {
             }
             free(path);
         } else {
-            char* exec_path = find_executable(argv[0]);
+            char* exec_path = find_executable(argv[0], 0).path;
             if (!exec_path) {
                 printf("%s: command not found\n", argv[0]);
                 continue;
