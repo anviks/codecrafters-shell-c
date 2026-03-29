@@ -1,15 +1,14 @@
-#include <asm-generic/errno-base.h>
 #include <dirent.h>
 #include <errno.h>
 #include <linux/limits.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <termios.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #ifdef _WIN32
 #define PATH_LIST_SEPARATOR ";"
@@ -88,78 +87,36 @@ char* find_executable(char* name) {
     return NULL;
 }
 
-static struct termios orig_termios;
+static char* completion_generator(const char* text, int state) {
+    static int builtin_idx;
+    static char** exec_matches;
+    static int exec_idx;
 
-void enable_raw_mode(void) {
-    tcgetattr(0, &orig_termios);  // Save current settings
-    struct termios raw_termios = orig_termios;  // Copy to modify
-    raw_termios.c_lflag &= ~(ICANON | ECHO);  // Turn off line buffering and echo
-    tcsetattr(0, TCSAFLUSH, &raw_termios);
+    if (state == 0) {
+        builtin_idx = 0;
+        exec_matches = find_executable_completions((char*)text);
+        exec_idx = 0;
+    }
+
+    while (builtins[builtin_idx] != NULL) {
+        char* b = builtins[builtin_idx++];
+        if (strncmp(b, text, strlen(text)) == 0)
+            return strdup(b);
+    }
+
+    if (exec_matches) {
+        while (exec_matches[exec_idx] != NULL)
+            return exec_matches[exec_idx++];
+    }
+
+    return NULL;
 }
 
-void disable_raw_mode(void) {
-    tcsetattr(0, TCSAFLUSH, &orig_termios);
-}
-
-void complete_with(char* command, int* index, const char* match) {
-    printf("%s ", match + *index);
-    *index = strlen(match);
-    strcpy(command, match);
-    command[(*index)++] = ' ';
-}
-
-void handle_tab(char* command, int* index, int is_double) {
-    for (int j = 0; builtins[j] != NULL; j++) {
-        if (strncmp(command, builtins[j], *index) == 0) {
-            return complete_with(command, index, builtins[j]);
-        }
-    }
-
-    char** execs = find_executable_completions(command);
-
-    // No matches or multiple matches and is first tab press
-    if (execs[0] == NULL || execs[1] != NULL && !is_double) {
-        printf("%c", 7);  // Ring a bell
-        return;
-    }
-
-    // Exactly 1 match
-    if (execs[1] == NULL) {
-        return complete_with(command, index, execs[0]);
-    }
-
-    // More matches and is second tab press
-    printf("%c", 7);  // Ring a bell
-    printf("\n%s", execs[0]);
-    for (int i = 1; execs[i] != NULL; i++) {
-        printf("  %s", execs[i]);
-    }
-    printf("\n$ %s", command);
-}
-
-char* read_input() {
-    char* command = malloc(1024);
-    int i = 0;
-    char c, prev_c;
-    while (1) {
-        read(0, &c, 1);
-        if (c == 127) {  // Backspace
-            if (i == 0) continue;
-            command[--i] = '\0';
-            printf("\b \b");
-        } else if (c == '\t') {
-            handle_tab(command, &i, prev_c == '\t');
-        } else if (c == '\n') {
-            command[i] = '\0';
-            printf("%c", c);
-            break;
-        } else {
-            command[i++] = c;
-            printf("%c", c);
-        }
-        prev_c = c;
-    }
-    return command;
+static char** shell_completion(const char* text, int start, int end) {
+    (void)end;
+    rl_attempted_completion_over = 1;
+    if (start != 0) return NULL;
+    return rl_completion_matches(text, completion_generator);
 }
 
 void handle_type(char** argv) {
@@ -184,11 +141,11 @@ typedef enum { NONE, STDOUT, STDERR, APPEND_STDOUT, APPEND_STDERR } RedirectMode
 
 int main() {
     setbuf(stdout, NULL);  // Flush after every printf
-    enable_raw_mode();
+    rl_attempted_completion_function = shell_completion;
 
-    while (1) {
-        printf("$ ");
-        char* command = read_input();
+    char* command;
+    while ((command = readline("$ ")) != NULL) {
+        if (*command) add_history(command);
 
         State state = NORMAL;
         RedirectMode redirect = NONE;
@@ -248,11 +205,9 @@ int main() {
         free(command);
         free(running_arg);
 
-        if (strcmp(argv[0], "") == 0) continue;
-        if (strcmp(argv[0], "exit") == 0) {
-            disable_raw_mode();
-            break;
-        }
+        if (argv[0] == NULL || strcmp(argv[0], "") == 0) continue;
+
+        if (strcmp(argv[0], "exit") == 0) break;
 
         if (redirect == STDOUT) {
             freopen(redirect_file, "w", stdout);
