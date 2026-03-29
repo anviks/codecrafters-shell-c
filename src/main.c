@@ -43,7 +43,7 @@ char* find_executable(char* name) {
 }
 
 typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
-typedef enum { NONE, STDOUT, STDERR } RedirectMode;
+typedef enum { NONE, STDOUT, STDERR, APPEND_STDOUT, APPEND_STDERR } RedirectMode;
 
 int main() {
     // Flush after every printf
@@ -75,6 +75,10 @@ int main() {
                                 redirect = STDOUT;
                             } else if (strcmp(running_arg, "2>") == 0) {
                                 redirect = STDERR;
+                            } else if (strcmp(running_arg, ">>") == 0 || strcmp(running_arg, "1>>") == 0) {
+                                redirect = APPEND_STDOUT;
+                            } else if (strcmp(running_arg, "2>>") == 0) {
+                                redirect = APPEND_STDERR;
                             } else if (redirect == NONE) {
                                 argv[argv_i++] = strdup(running_arg);
                             } else {
@@ -111,6 +115,10 @@ int main() {
             freopen(redirect_file, "w", stdout);
         } else if (redirect == STDERR) {
             freopen(redirect_file, "w", stderr);
+        } else if (redirect == APPEND_STDOUT) {
+            freopen(redirect_file, "a+", stdout);
+        } else if (redirect == APPEND_STDERR) {
+            freopen(redirect_file, "a+", stderr);
         }
 
         if (strcmp(argv[0], "echo") == 0) {
@@ -185,9 +193,9 @@ int main() {
             free(exec_path);
         }
 
-        if (redirect == STDOUT) {
+        if (redirect == STDOUT || redirect == APPEND_STDOUT) {
             freopen("/dev/tty", "w", stdout);
-        } else if (redirect == STDERR) {
+        } else if (redirect == STDERR || redirect == APPEND_STDERR) {
             freopen("/dev/tty", "w", stderr);
         }
     }
