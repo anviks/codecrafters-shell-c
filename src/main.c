@@ -9,12 +9,15 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <termios.h>
 
 #ifdef _WIN32
 #define PATH_LIST_SEPARATOR ";"
 #else
 #define PATH_LIST_SEPARATOR ":"
 #endif
+
+static char* builtins[] = {"echo", "exit", "type", "pwd", "cd", NULL};
 
 char* find_executable(char* name) {
     char* path_env = strdup(getenv("PATH"));
@@ -42,18 +45,81 @@ char* find_executable(char* name) {
     return NULL;
 }
 
+static struct termios orig_termios;
+
+void enable_raw_mode(void) {
+    tcgetattr(0, &orig_termios);  // Save current settings
+    struct termios raw_termios = orig_termios;  // Copy to modify
+    raw_termios.c_lflag &= ~(ICANON | ECHO);  // Turn off line buffering and echo
+    tcsetattr(0, TCSAFLUSH, &raw_termios);
+}
+
+void disable_raw_mode(void) {
+    tcsetattr(0, TCSAFLUSH, &orig_termios);
+}
+
+char* read_input() {
+    char* command = malloc(1024);
+    int i = 0;
+    while (1) {
+        char c;
+        read(0, &c, 1);
+        if (c == 127) {  // Backspace
+            if (i == 0) continue;
+            command[--i] = '\0';
+            printf("\b \b");
+        } else if (c == '\t') {
+            for (int j = 0; builtins[j] != NULL; j++) {
+                if (strncmp(command, builtins[j], i) == 0) {
+                    printf("%s ", builtins[j] + i);
+                    i = strlen(builtins[j]);
+                    strcpy(command, builtins[j]);
+                    command[i++] = ' ';
+                }
+            }
+        } else if (c == '\n') {
+            command[i] = '\0';
+            printf("%c", c);
+            break;
+        } else {
+            command[i++] = c;
+            printf("%c", c);
+        }
+    }
+    return command;
+}
+
+void handle_type(char** argv) {
+    if (argv[1] == NULL || strcmp(argv[1], "") == 0) return;
+
+    for (int i = 0; builtins[i] != NULL; i++) {
+        if (strcmp(argv[1], builtins[i]) == 0) {
+            printf("%s is a shell builtin\n", argv[1]);
+            return;
+        }
+    }
+
+    char* exec_path = find_executable(argv[1]);
+    if (exec_path)
+        printf("%s\n", exec_path);
+    else
+        printf("%s: not found\n", argv[1]);
+}
+
 typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
 typedef enum { NONE, STDOUT, STDERR, APPEND_STDOUT, APPEND_STDERR } RedirectMode;
 
 int main() {
     // Flush after every printf
     setbuf(stdout, NULL);
+    enable_raw_mode();
 
     while (1) {
         printf("$ ");
-        char command[1024];
-        fgets(command, sizeof(command), stdin);
-        command[strlen(command) - 1] = '\0';
+        char* command = read_input();
+        // char command[1024];
+        // fgets(command, sizeof(command), stdin);
+        // command[strlen(command) - 1] = '\0';
 
         State state = NORMAL;
         RedirectMode redirect = NONE;
@@ -108,8 +174,14 @@ int main() {
         }
         argv[argv_i] = NULL;
 
+        free(command);
+        free(running_arg);
+
         if (strcmp(argv[0], "") == 0) continue;
-        if (strcmp(argv[0], "exit") == 0) break;
+        if (strcmp(argv[0], "exit") == 0) {
+            disable_raw_mode();
+            break;
+        }
 
         if (redirect == STDOUT) {
             freopen(redirect_file, "w", stdout);
@@ -121,6 +193,8 @@ int main() {
             freopen(redirect_file, "a", stderr);
         }
 
+        if (redirect != NONE) free(redirect_file);
+
         if (strcmp(argv[0], "echo") == 0) {
             printf("%s", argv[1]);
             for (int i = 2; argv[i] != NULL; i++) {
@@ -128,22 +202,7 @@ int main() {
             }
             printf("\n");
         } else if (strcmp(argv[0], "type") == 0) {
-            char* args = command + 5;
-            if (
-                strcmp(args, "echo") == 0
-                || strcmp(args, "exit") == 0
-                || strcmp(args, "type") == 0
-                || strcmp(args, "pwd") == 0
-                || strcmp(args, "cd") == 0
-            ) {
-                printf("%s is a shell builtin\n", args);
-            } else {
-                char* exec_path = find_executable(args);
-                if (exec_path)
-                    printf("%s\n", exec_path);
-                else
-                    printf("%s: not found\n", args);
-            }
+            handle_type(argv);
         } else if (strcmp(argv[0], "pwd") == 0) {
             char cwd[PATH_MAX];
             getcwd(cwd, sizeof(cwd));
@@ -177,7 +236,7 @@ int main() {
         } else {
             char* exec_path = find_executable(argv[0]);
             if (!exec_path) {
-                printf("%s: command not found\n", command);
+                printf("%s: command not found\n", argv[0]);
                 continue;
             }
 
