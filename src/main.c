@@ -64,12 +64,12 @@ void handle_tab(char* command, int* index) {
             printf("%s ", builtins[j] + *index);
             *index = strlen(builtins[j]);
             strcpy(command, builtins[j]);
-            command[*index++] = ' ';
+            command[(*index)++] = ' ';
             return;
         }
     }
 
-    printf("%c", '\x07');
+    printf("%c", 7);  // Ring a bell
 }
 
 char* read_input() {
