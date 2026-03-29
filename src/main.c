@@ -39,7 +39,11 @@ char** find_executable_completions(char* name) {
                 char* fullpath = malloc(strlen(path) + strlen(dir->d_name) + 2);
                 snprintf(fullpath, strlen(path) + strlen(dir->d_name) + 2, "%s/%s", path, dir->d_name);
 
-                if (access(fullpath, X_OK) != 0) continue;
+                if (access(fullpath, X_OK) != 0) {
+                    free(fullpath);
+                    continue;
+                }
+                free(fullpath);
                 result[i++] = strdup(dir->d_name);
             }
             closedir(d);
@@ -67,7 +71,10 @@ char* find_executable(char* name) {
                 char* fullpath = malloc(strlen(path) + strlen(dir->d_name) + 2);
                 snprintf(fullpath, strlen(path) + strlen(dir->d_name) + 2, "%s/%s", path, dir->d_name);
 
-                if (access(fullpath, X_OK) != 0) continue;
+                if (access(fullpath, X_OK) != 0) {
+                    free(fullpath);
+                    continue;
+                }
 
                 closedir(d);
                 free(path_env);
@@ -189,6 +196,7 @@ int main() {
         char** argv = malloc(1024 * sizeof(char*));
         char* running_arg = malloc(1024);
         int argv_i = 0, running_arg_i = 0;
+
         for (int i = 0; command[i] != '\0'; i++) {
             char c = command[i];
             switch (state) {
@@ -228,6 +236,7 @@ int main() {
                     break;
             }
         }
+
         running_arg[running_arg_i] = '\0';
         if (redirect == NONE) {
             argv[argv_i++] = strdup(running_arg);
