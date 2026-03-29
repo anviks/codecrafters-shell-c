@@ -19,6 +19,10 @@
 
 static char* builtins[] = {"echo", "exit", "type", "pwd", "cd", NULL};
 
+int cmp(const void* a, const void* b) {
+    return strcmp(*(const char**)a, *(const char**)b);
+}
+
 char** find_executable_completions(char* name) {
     char** result = malloc(1024 * sizeof(char*));
     int i = 0;
@@ -43,6 +47,7 @@ char** find_executable_completions(char* name) {
         path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
     }
     free(path_env);
+    qsort(result, i, sizeof(char*), cmp);
     result[i] = NULL;
 
     return result;
