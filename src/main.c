@@ -58,6 +58,20 @@ void disable_raw_mode(void) {
     tcsetattr(0, TCSAFLUSH, &orig_termios);
 }
 
+void handle_tab(char* command, int* index) {
+    for (int j = 0; builtins[j] != NULL; j++) {
+        if (strncmp(command, builtins[j], *index) == 0) {
+            printf("%s ", builtins[j] + *index);
+            *index = strlen(builtins[j]);
+            strcpy(command, builtins[j]);
+            command[*index++] = ' ';
+            return;
+        }
+    }
+
+    printf("%c", '\x07');
+}
+
 char* read_input() {
     char* command = malloc(1024);
     int i = 0;
@@ -69,14 +83,7 @@ char* read_input() {
             command[--i] = '\0';
             printf("\b \b");
         } else if (c == '\t') {
-            for (int j = 0; builtins[j] != NULL; j++) {
-                if (strncmp(command, builtins[j], i) == 0) {
-                    printf("%s ", builtins[j] + i);
-                    i = strlen(builtins[j]);
-                    strcpy(command, builtins[j]);
-                    command[i++] = ' ';
-                }
-            }
+            handle_tab(command, &i);
         } else if (c == '\n') {
             command[i] = '\0';
             printf("%c", c);
