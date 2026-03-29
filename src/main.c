@@ -254,6 +254,7 @@ int main() {
 
         if (redirect == STDOUT || redirect == APPEND_STDOUT) {
             freopen("/dev/tty", "w", stdout);
+            setbuf(stdout, NULL);
         } else if (redirect == STDERR || redirect == APPEND_STDERR) {
             freopen("/dev/tty", "w", stderr);
         }
