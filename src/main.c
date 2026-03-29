@@ -114,7 +114,6 @@ static char* completion_generator(const char* text, int state) {
 
 static char** shell_completion(const char* text, int start, int end) {
     (void)end;
-    rl_attempted_completion_over = 1;
     if (start != 0) return NULL;
     return rl_completion_matches(text, completion_generator);
 }
