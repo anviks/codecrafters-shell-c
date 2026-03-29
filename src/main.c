@@ -33,17 +33,18 @@ struct Executable find_executable(char* name, int is_partial) {
         struct dirent* dir;
         if (d) {
             while ((dir = readdir(d)) != NULL) {
-                if (is_partial && strncmp(dir->d_name, name, strlen(name)) == 0 || !is_partial && strcmp(dir->d_name, name) == 0) {
-                    char* fullpath = malloc(strlen(path) + strlen(dir->d_name) + 2);
-                    snprintf(fullpath, strlen(path) + strlen(dir->d_name) + 2, "%s/%s", path, dir->d_name);
-        
-                    if (access(fullpath, X_OK) == 0) {
-                        closedir(d);
-                        free(path_env);
-                        struct Executable result = {.name = dir->d_name, .path = fullpath};
-                        return result;
-                    }
-                }
+                if (is_partial && strncmp(dir->d_name, name, strlen(name)) != 0) continue;
+                if (!is_partial && strcmp(dir->d_name, name) != 0) continue;
+
+                char* fullpath = malloc(strlen(path) + strlen(dir->d_name) + 2);
+                snprintf(fullpath, strlen(path) + strlen(dir->d_name) + 2, "%s/%s", path, dir->d_name);
+
+                if (access(fullpath, X_OK) != 0) continue;
+
+                closedir(d);
+                free(path_env);
+                struct Executable result = {.name = dir->d_name, .path = fullpath};
+                return result;
             }
             closedir(d);
         }
@@ -67,24 +68,23 @@ void disable_raw_mode(void) {
     tcsetattr(0, TCSAFLUSH, &orig_termios);
 }
 
+void complete_with(char* command, int* index, const char* match) {
+    printf("%s ", match + *index);
+    *index = strlen(match);
+    strcpy(command, match);
+    command[(*index)++] = ' ';
+}
+
 void handle_tab(char* command, int* index) {
     for (int j = 0; builtins[j] != NULL; j++) {
         if (strncmp(command, builtins[j], *index) == 0) {
-            printf("%s ", builtins[j] + *index);
-            *index = strlen(builtins[j]);
-            strcpy(command, builtins[j]);
-            command[(*index)++] = ' ';
-            return;
+            return complete_with(command, index, builtins[j]);
         }
     }
 
     char* name = find_executable(command, 1).name;
     if (name) {
-        printf("%s ", name + *index);
-        *index = strlen(name);
-        strcpy(command, name);
-        command[(*index)++] = ' ';
-        return;
+        return complete_with(command, index, name);
     }
 
     printf("%c", 7);  // Ring a bell
@@ -135,16 +135,12 @@ typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
 typedef enum { NONE, STDOUT, STDERR, APPEND_STDOUT, APPEND_STDERR } RedirectMode;
 
 int main() {
-    // Flush after every printf
-    setbuf(stdout, NULL);
+    setbuf(stdout, NULL);  // Flush after every printf
     enable_raw_mode();
 
     while (1) {
         printf("$ ");
         char* command = read_input();
-        // char command[1024];
-        // fgets(command, sizeof(command), stdin);
-        // command[strlen(command) - 1] = '\0';
 
         State state = NORMAL;
         RedirectMode redirect = NONE;
@@ -279,7 +275,7 @@ int main() {
 
         if (redirect == STDOUT || redirect == APPEND_STDOUT) {
             freopen("/dev/tty", "w", stdout);
-            setbuf(stdout, NULL);
+            setbuf(stdout, NULL);  // Flush after every printf
         } else if (redirect == STDERR || redirect == APPEND_STDERR) {
             freopen("/dev/tty", "w", stderr);
         }
