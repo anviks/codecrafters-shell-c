@@ -1,5 +1,4 @@
 #include <asm-generic/errno-base.h>
-#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <linux/limits.h>
@@ -16,18 +15,6 @@
 #else
 #define PATH_LIST_SEPARATOR ":"
 #endif
-
-static int (*out)(const char* fmt, ...);
-
-static FILE* log_file;
-
-static int file_out(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    int result = vfprintf(log_file, fmt, args);
-    va_end(args);
-    return result;
-}
 
 char* find_executable(char* name) {
     char* path_env = strdup(getenv("PATH"));
@@ -70,7 +57,6 @@ int main() {
 
         State state = NORMAL;
         RedirectMode redirect = NONE;
-        out = printf;
         char* redirect_file;
         char** argv = malloc(1024 * sizeof(char*));
         char* running_arg = malloc(1024);
@@ -123,6 +109,8 @@ int main() {
 
         if (redirect == STDOUT) {
             freopen(redirect_file, "w", stdout);
+        } else if (redirect == STDERR) {
+            freopen(redirect_file, "w", stderr);
         }
 
         if (strcmp(argv[0], "echo") == 0) {
@@ -198,7 +186,9 @@ int main() {
         }
 
         if (redirect == STDOUT) {
-            freopen("/dev/tty", "w", stdout);  // Linux
+            freopen("/dev/tty", "w", stdout);
+        } else if (redirect == STDERR) {
+            freopen("/dev/tty", "w", stderr);
         }
     }
 
