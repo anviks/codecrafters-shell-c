@@ -116,9 +116,9 @@ int main() {
         } else if (redirect == STDERR) {
             freopen(redirect_file, "w", stderr);
         } else if (redirect == APPEND_STDOUT) {
-            freopen(redirect_file, "a+", stdout);
+            freopen(redirect_file, "a", stdout);
         } else if (redirect == APPEND_STDERR) {
-            freopen(redirect_file, "a+", stderr);
+            freopen(redirect_file, "a", stderr);
         }
 
         if (strcmp(argv[0], "echo") == 0) {
