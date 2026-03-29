@@ -19,12 +19,9 @@
 
 static char* builtins[] = {"echo", "exit", "type", "pwd", "cd", NULL};
 
-struct Executable {
-    char* name;
-    char* path;
-};
-
-struct Executable find_executable(char* name, int is_partial) {
+char** find_executable_completions(char* name) {
+    char** result = malloc(1024 * sizeof(char*));
+    int i = 0;
     char* path_env = strdup(getenv("PATH"));
     char *path, *path_state;
     path = strtok_r(path_env, PATH_LIST_SEPARATOR, &path_state);
@@ -33,8 +30,34 @@ struct Executable find_executable(char* name, int is_partial) {
         struct dirent* dir;
         if (d) {
             while ((dir = readdir(d)) != NULL) {
-                if (is_partial && strncmp(dir->d_name, name, strlen(name)) != 0) continue;
-                if (!is_partial && strcmp(dir->d_name, name) != 0) continue;
+                if (strncmp(dir->d_name, name, strlen(name)) != 0) continue;
+
+                char* fullpath = malloc(strlen(path) + strlen(dir->d_name) + 2);
+                snprintf(fullpath, strlen(path) + strlen(dir->d_name) + 2, "%s/%s", path, dir->d_name);
+
+                if (access(fullpath, X_OK) != 0) continue;
+                result[i++] = strdup(dir->d_name);
+            }
+            closedir(d);
+        }
+        path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
+    }
+    free(path_env);
+    result[i] = NULL;
+
+    return result;
+}
+
+char* find_executable(char* name) {
+    char* path_env = strdup(getenv("PATH"));
+    char *path, *path_state;
+    path = strtok_r(path_env, PATH_LIST_SEPARATOR, &path_state);
+    while (path != NULL) {
+        DIR* d = opendir(path);
+        struct dirent* dir;
+        if (d) {
+            while ((dir = readdir(d)) != NULL) {
+                if (strcmp(dir->d_name, name) != 0) continue;
 
                 char* fullpath = malloc(strlen(path) + strlen(dir->d_name) + 2);
                 snprintf(fullpath, strlen(path) + strlen(dir->d_name) + 2, "%s/%s", path, dir->d_name);
@@ -43,16 +66,14 @@ struct Executable find_executable(char* name, int is_partial) {
 
                 closedir(d);
                 free(path_env);
-                struct Executable result = {.name = dir->d_name, .path = fullpath};
-                return result;
+                return fullpath;
             }
             closedir(d);
         }
         path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
     }
     free(path_env);
-    struct Executable result = {NULL, NULL};
-    return result;
+    return NULL;
 }
 
 static struct termios orig_termios;
@@ -75,33 +96,47 @@ void complete_with(char* command, int* index, const char* match) {
     command[(*index)++] = ' ';
 }
 
-void handle_tab(char* command, int* index) {
+void handle_tab(char* command, int* index, int is_double) {
     for (int j = 0; builtins[j] != NULL; j++) {
         if (strncmp(command, builtins[j], *index) == 0) {
             return complete_with(command, index, builtins[j]);
         }
     }
 
-    char* name = find_executable(command, 1).name;
-    if (name) {
-        return complete_with(command, index, name);
+    char** execs = find_executable_completions(command);
+
+    // No matches or multiple matches and is first tab press
+    if (execs[0] == NULL || execs[1] != NULL && !is_double) {
+        printf("%c", 7);  // Ring a bell
+        return;
     }
 
+    // Exactly 1 match
+    if (execs[1] == NULL) {
+        return complete_with(command, index, execs[0]);
+    }
+
+    // More matches and is second tab press
     printf("%c", 7);  // Ring a bell
+    printf("\n%s", execs[0]);
+    for (int i = 1; execs[i] != NULL; i++) {
+        printf("  %s", execs[i]);
+    }
+    printf("\n$ %s", command);
 }
 
 char* read_input() {
     char* command = malloc(1024);
     int i = 0;
+    char c, prev_c;
     while (1) {
-        char c;
         read(0, &c, 1);
         if (c == 127) {  // Backspace
             if (i == 0) continue;
             command[--i] = '\0';
             printf("\b \b");
         } else if (c == '\t') {
-            handle_tab(command, &i);
+            handle_tab(command, &i, prev_c == '\t');
         } else if (c == '\n') {
             command[i] = '\0';
             printf("%c", c);
@@ -110,6 +145,7 @@ char* read_input() {
             command[i++] = c;
             printf("%c", c);
         }
+        prev_c = c;
     }
     return command;
 }
@@ -124,7 +160,7 @@ void handle_type(char** argv) {
         }
     }
 
-    char* exec_path = find_executable(argv[1], 0).path;
+    char* exec_path = find_executable(argv[1]);
     if (exec_path)
         printf("%s\n", exec_path);
     else
@@ -255,7 +291,7 @@ int main() {
             }
             free(path);
         } else {
-            char* exec_path = find_executable(argv[0], 0).path;
+            char* exec_path = find_executable(argv[0]);
             if (!exec_path) {
                 printf("%s: command not found\n", argv[0]);
                 continue;
