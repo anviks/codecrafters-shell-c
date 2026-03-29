@@ -1,0 +1,9 @@
+CMakeLists.txt
+README.md
+bruh
+build
+codecrafters.yml
+src
+vcpkg-configuration.json
+vcpkg.json
+your_program.sh

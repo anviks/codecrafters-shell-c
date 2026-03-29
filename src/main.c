@@ -1,7 +1,9 @@
 #include <asm-generic/errno-base.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <linux/limits.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +16,18 @@
 #else
 #define PATH_LIST_SEPARATOR ":"
 #endif
+
+static int (*out)(const char* fmt, ...);
+
+static FILE* log_file;
+
+static int file_out(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int result = vfprintf(log_file, fmt, args);
+    va_end(args);
+    return result;
+}
 
 char* find_executable(char* name) {
     char* path_env = strdup(getenv("PATH"));
@@ -42,6 +56,7 @@ char* find_executable(char* name) {
 }
 
 typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
+typedef enum { NONE, STDOUT, STDERR } RedirectMode;
 
 int main() {
     // Flush after every printf
@@ -53,14 +68,13 @@ int main() {
         fgets(command, sizeof(command), stdin);
         command[strlen(command) - 1] = '\0';
 
-        if (strcmp(command, "") == 0) continue;
-        if (strcmp(command, "exit") == 0) break;
-
         State state = NORMAL;
+        RedirectMode redirect = NONE;
+        out = printf;
+        char* redirect_file;
         char** argv = malloc(1024 * sizeof(char*));
-        int argv_i = 0;
         char* running_arg = malloc(1024);
-        int running_arg_i = 0;
+        int argv_i = 0, running_arg_i = 0;
         for (int i = 0; command[i] != '\0'; i++) {
             char c = command[i];
             switch (state) {
@@ -71,7 +85,15 @@ int main() {
                     else if (c == ' ') {
                         if (running_arg_i > 0) {
                             running_arg[running_arg_i] = '\0';
-                            argv[argv_i++] = strdup(running_arg);
+                            if (strcmp(running_arg, ">") == 0 || strcmp(running_arg, "1>") == 0) {
+                                redirect = STDOUT;
+                            } else if (strcmp(running_arg, "2>") == 0) {
+                                redirect = STDERR;
+                            } else if (redirect == NONE) {
+                                argv[argv_i++] = strdup(running_arg);
+                            } else {
+                                redirect_file = strdup(running_arg);
+                            }
                             running_arg_i = 0;
                         }
                     }
@@ -89,16 +111,27 @@ int main() {
             }
         }
         running_arg[running_arg_i] = '\0';
-        argv[argv_i++] = strdup(running_arg);
+        if (redirect == NONE) {
+            argv[argv_i++] = strdup(running_arg);
+        } else {
+            redirect_file = strdup(running_arg);
+        }
         argv[argv_i] = NULL;
 
-        if (strncmp(command, "echo ", 5) == 0) {
+        if (strcmp(argv[0], "") == 0) continue;
+        if (strcmp(argv[0], "exit") == 0) break;
+
+        if (redirect == STDOUT) {
+            freopen(redirect_file, "w", stdout);
+        }
+
+        if (strcmp(argv[0], "echo") == 0) {
             printf("%s", argv[1]);
             for (int i = 2; argv[i] != NULL; i++) {
                 printf(" %s", argv[i]);
             }
             printf("\n");
-        } else if (strncmp(command, "type ", 5) == 0) {
+        } else if (strcmp(argv[0], "type") == 0) {
             char* args = command + 5;
             if (
                 strcmp(args, "echo") == 0
@@ -115,12 +148,20 @@ int main() {
                 else
                     printf("%s: not found\n", args);
             }
-        } else if (strcmp(command, "pwd") == 0) {
+        } else if (strcmp(argv[0], "pwd") == 0) {
             char cwd[PATH_MAX];
             getcwd(cwd, sizeof(cwd));
             printf("%s\n", cwd);
-        } else if (strncmp(command, "cd ", 3) == 0) {
-            char* path = strdup(command + 3);
+        } else if (strcmp(argv[0], "cd") == 0) {
+            char* path;
+            if (argv[1] == NULL) {
+                path = strdup("~");
+            } else if (strcmp(argv[1], "") == 0) {
+                path = strdup(".");
+            } else {
+                path = strdup(argv[1]);
+            }
+
             if (strncmp(path, "~", 1) == 0) {
                 char* home = getenv("HOME");
                 char* expanded = malloc(strlen(path) + strlen(home));
@@ -154,6 +195,10 @@ int main() {
             }
 
             free(exec_path);
+        }
+
+        if (redirect == STDOUT) {
+            freopen("/dev/tty", "w", stdout);  // Linux
         }
     }
 
