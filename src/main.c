@@ -157,9 +157,12 @@ int main() {
             char c = command[i];
             switch (state) {
                 case NORMAL:
-                    if (c == '\\') running_arg[running_arg_i++] = command[++i];
-                    else if (c == '\'') state = IN_SINGLE_QUOTE;
-                    else if (c == '"') state = IN_DOUBLE_QUOTE;
+                    if (c == '\\')
+                        running_arg[running_arg_i++] = command[++i];
+                    else if (c == '\'')
+                        state = IN_SINGLE_QUOTE;
+                    else if (c == '"')
+                        state = IN_DOUBLE_QUOTE;
                     else if (c == ' ') {
                         if (running_arg_i > 0) {
                             running_arg[running_arg_i] = '\0';
@@ -178,8 +181,8 @@ int main() {
                             }
                             running_arg_i = 0;
                         }
-                    }
-                    else running_arg[running_arg_i++] = c;
+                    } else
+                        running_arg[running_arg_i++] = c;
                     break;
                 case IN_SINGLE_QUOTE:
                     if (c == '\'') state = NORMAL;
@@ -200,6 +203,10 @@ int main() {
             redirect_file = strdup(running_arg);
         }
         argv[argv_i] = NULL;
+
+        for (int i = 0; argv[i] != NULL; i++) {
+            printf("Arg %d: %s\n", i, argv[i]);
+        }
 
         free(command);
         free(running_arg);
