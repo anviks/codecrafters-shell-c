@@ -131,7 +131,7 @@ void handle_type(char** argv) {
     if (exec_path)
         printf("%s\n", exec_path);
     else
-        printf("%s: not found\n", argv[1]);
+        fprintf(stderr, "%s: not found\n", argv[1]);
 }
 
 typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
@@ -252,6 +252,14 @@ int parse_commands(char* input, Command* commands) {
 }
 
 void execute_command(Command command) {
+    if (command.stdout_path != NULL) {
+        freopen(command.stdout_path, command.stdout_append ? "a" : "w", stdout);
+    }
+
+    if (command.stderr_path != NULL) {
+        freopen(command.stderr_path, command.stderr_append ? "a" : "w", stderr);
+    }
+
     if (strcmp(command.argv[0], "echo") == 0) {
         printf("%s", command.argv[1]);
         for (int i = 2; i < command.argc; i++) {
@@ -287,13 +295,13 @@ void execute_command(Command command) {
             closedir(d);
             chdir(path);
         } else if (errno == ENOENT) {
-            printf("cd: %s: No such file or directory\n", path);
+            fprintf(stderr, "cd: %s: No such file or directory\n", path);
         }
         free(path);
     } else {
         char* exec_path = find_executable(command.argv[0]);
         if (!exec_path) {
-            printf("%s: command not found\n", command.argv[0]);
+            fprintf(stderr, "%s: command not found\n", command.argv[0]);
             return;
         }
 
@@ -307,6 +315,13 @@ void execute_command(Command command) {
         }
 
         free(exec_path);
+    }
+
+    if (command.stdout_path != NULL) {
+        freopen("/dev/tty", "w", stdout);
+        setbuf(stdout, NULL);  // Flush after every printf
+    } else if (command.stderr_path != NULL) {
+        freopen("/dev/tty", "w", stderr);
     }
 }
 
@@ -331,27 +346,10 @@ int main() {
         int command_count = parse_commands(input, commands);
 
         free(input);
-        
-        if (commands[0].stdout_path != NULL) {
-            freopen(commands[0].stdout_path, commands[0].stdout_append ? "a" : "w", stdout);
-        }
-        
-        if (commands[0].stderr_path != NULL) {
-            freopen(commands[0].stderr_path, commands[0].stderr_append ? "a" : "w", stderr);
-        }
 
         if (commands[0].argc == 0 || strcmp(commands[0].argv[0], "") == 0) continue;
-
         if (strcmp(commands[0].argv[0], "exit") == 0) break;
-        
         execute_command(commands[0]);
-
-        if (commands[0].stdout_path != NULL) {
-            freopen("/dev/tty", "w", stdout);
-            setbuf(stdout, NULL);  // Flush after every printf
-        } else if (commands[0].stderr_path != NULL) {
-            freopen("/dev/tty", "w", stderr);
-        }
 
         for (int i = 0; i < command_count; i++) {
             for (int j = 0; j < commands[i].argc; j++) {
