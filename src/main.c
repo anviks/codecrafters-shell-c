@@ -257,33 +257,6 @@ int parse_commands(char* input, Command* commands) {
     return cur_cmd_i;
 }
 
-void load_history(char* filename) {
-    FILE* fd = fopen(filename, "r");
-    char* line = NULL;
-    size_t len = 0;
-
-    while ((getline(&line, &len, fd)) != -1) {
-        if (strcmp(line, "\n") != 0) {
-            line[strlen(line) - 1] = '\0';
-            add_history(line);
-        }
-    }
-
-    if (line) free(line);
-    fclose(fd);
-}
-
-void save_history(char* filename, char* mode) {
-    FILE* fd = fopen(filename, mode);
-
-    HIST_ENTRY** history = history_list();
-    for (int i = 0; history[i] != NULL; i++) {
-        fprintf(fd, "%s\n", history[i]->line);
-    }
-
-    fclose(fd);
-}
-
 void handle_history_options(char** argv) {
     if (
         strcmp(argv[1], "-r") != 0
@@ -294,18 +267,19 @@ void handle_history_options(char** argv) {
         return;
     }
 
-    char* mode = argv[1] + 1;
     char* filename = argv[2];
-
     if (filename == NULL) {
         fprintf(stderr, "history: %s: filename must be specified\n", argv[1]);
         return;
     }
-
-    if (mode[0] == 'r') {
-        load_history(filename);
+    
+    char mode = argv[1][1];
+    if (mode == 'r') {
+        read_history(filename);
+    } else if (mode == 'w') {
+        write_history(filename);
     } else {
-        save_history(filename, mode);
+        append_history(history_length, filename);
     }
 }
 
@@ -416,7 +390,7 @@ int main() {
 
     char* histfile = getenv("HISTFILE");
     if (histfile != NULL && strcmp(histfile, "") != 0) {
-        load_history(histfile);
+        read_history(histfile);
     }
 
     char* input;
@@ -495,7 +469,7 @@ int main() {
     }
 
     if (histfile != NULL && strcmp(histfile, "") != 0) {
-        save_history(histfile, "a");
+        append_history(history_length, histfile);
     }
 
     return 0;
