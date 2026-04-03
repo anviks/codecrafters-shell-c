@@ -1,5 +1,7 @@
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <linux/limits.h>
 #include <readline/history.h>
 #include <readline/readline.h>
@@ -304,8 +306,24 @@ void execute_command(Command command) {
         }
         free(path);
     } else if (strcmp(command.argv[0], "history") == 0) {
+        int limit = 1000;
+        char* str, endptr;
+        if ((str = command.argv[1]) != NULL) {
+            char* endptr;
+            limit = strtol(str, &endptr, 10);
+            if (*endptr != '\0') {
+                fprintf(stderr, "history: %s: numeric argument required\n", str);
+                return;
+            }
+            if (limit < 0) limit = 0;
+        }
+
         HIST_ENTRY** history = history_list();
-        for (int i = 0; history[i] != NULL; i++) {
+        int h_count = 0;
+        while (history[h_count] != NULL) h_count++;
+
+        int start = limit >= h_count ? 0 : h_count - limit;
+        for (int i = start; history[i] != NULL; i++) {
             printf("    %d  %s\n", i + 1, history[i]->line);
         }
     } else {
