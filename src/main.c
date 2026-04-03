@@ -376,44 +376,48 @@ int main() {
         if (commands[0].argv[0] == NULL) continue;
         if (strcmp(commands[0].argv[0], "exit") == 0) break;
 
-        int pipes[command_count - 1][2];
+        if (command_count == 1) {
+            execute_command(commands[0]);
+        } else {
+            int pipes[command_count - 1][2];
 
-        for (int i = 0; i < command_count - 1; i++) {
-            pipe(pipes[i]);
-        }
-
-        for (int i = 0; i < command_count; i++) {
-            if (fork() == 0) {
-                // read from left
-                if (i > 0) {
-                    dup2(pipes[i - 1][0], STDIN_FILENO);
-                }
-
-                // write to right
-                if (i < command_count - 1) {
-                    dup2(pipes[i][1], STDOUT_FILENO);
-                }
-
-                // close all other fd-s, since they're not needed
-                for (int j = 0; j < command_count - 1; j++) {
-                    close(pipes[j][0]);
-                    close(pipes[j][1]);
-                }
-
-                execute_command(commands[i]);
-                exit(0);
+            for (int i = 0; i < command_count - 1; i++) {
+                pipe(pipes[i]);
             }
-        }
 
-        // now close pipe fd-s in the parent process
-        for (int i = 0; i < command_count - 1; i++) {
-            close(pipes[i][0]);
-            close(pipes[i][1]);
-        }
+            for (int i = 0; i < command_count; i++) {
+                if (fork() == 0) {
+                    // read from left
+                    if (i > 0) {
+                        dup2(pipes[i - 1][0], STDIN_FILENO);
+                    }
 
-        // wait for children to finish
-        for (int i = 0; i < command_count; i++) {
-            wait(NULL);
+                    // write to right
+                    if (i < command_count - 1) {
+                        dup2(pipes[i][1], STDOUT_FILENO);
+                    }
+
+                    // close all other fd-s, since they're not needed
+                    for (int j = 0; j < command_count - 1; j++) {
+                        close(pipes[j][0]);
+                        close(pipes[j][1]);
+                    }
+
+                    execute_command(commands[i]);
+                    exit(0);
+                }
+            }
+
+            // now close pipe fd-s in the parent process
+            for (int i = 0; i < command_count - 1; i++) {
+                close(pipes[i][0]);
+                close(pipes[i][1]);
+            }
+
+            // wait for children to finish
+            for (int i = 0; i < command_count; i++) {
+                wait(NULL);
+            }
         }
 
         for (int i = 0; i < command_count; i++) {
