@@ -251,6 +251,65 @@ int parse_commands(char* input, Command* commands) {
     return cur_cmd_i;
 }
 
+void execute_command(Command command) {
+    if (strcmp(command.argv[0], "echo") == 0) {
+        printf("%s", command.argv[1]);
+        for (int i = 2; i < command.argc; i++) {
+            printf(" %s", command.argv[i]);
+        }
+        printf("\n");
+    } else if (strcmp(command.argv[0], "type") == 0) {
+        handle_type(command.argv);
+    } else if (strcmp(command.argv[0], "pwd") == 0) {
+        char cwd[PATH_MAX];
+        getcwd(cwd, sizeof(cwd));
+        printf("%s\n", cwd);
+    } else if (strcmp(command.argv[0], "cd") == 0) {
+        char* path;
+        if (command.argc == 1) {
+            path = strdup("~");
+        } else if (strcmp(command.argv[1], "") == 0) {
+            path = strdup(".");
+        } else {
+            path = strdup(command.argv[1]);
+        }
+
+        if (strncmp(path, "~", 1) == 0) {
+            char* home = getenv("HOME");
+            char* expanded = malloc(strlen(path) + strlen(home));
+            strcpy(expanded, home);
+            strcpy(expanded + strlen(home), path + 1);
+            free(path);
+            path = expanded;
+        }
+        DIR* d = opendir(path);
+        if (d) {
+            closedir(d);
+            chdir(path);
+        } else if (errno == ENOENT) {
+            printf("cd: %s: No such file or directory\n", path);
+        }
+        free(path);
+    } else {
+        char* exec_path = find_executable(command.argv[0]);
+        if (!exec_path) {
+            printf("%s: command not found\n", command.argv[0]);
+            return;
+        }
+
+        pid_t pid = fork();
+
+        if (pid == 0) {
+            execv(exec_path, command.argv);
+            exit(127);
+        } else {
+            waitpid(pid, 0, 0);
+        }
+
+        free(exec_path);
+    }
+}
+
 void log_args(int command_count, Command* commands) {
     for (int i = 0; i < command_count; i++) {
         for (int j = 0; j < commands[i].argc; j++) {
@@ -272,75 +331,20 @@ int main() {
         int command_count = parse_commands(input, commands);
 
         free(input);
-
-        if (commands[0].argc == 0 || strcmp(commands[0].argv[0], "") == 0) continue;
-
-        if (strcmp(commands[0].argv[0], "exit") == 0) break;
-
+        
         if (commands[0].stdout_path != NULL) {
             freopen(commands[0].stdout_path, commands[0].stdout_append ? "a" : "w", stdout);
         }
-
+        
         if (commands[0].stderr_path != NULL) {
             freopen(commands[0].stderr_path, commands[0].stderr_append ? "a" : "w", stderr);
         }
 
-        if (strcmp(commands[0].argv[0], "echo") == 0) {
-            printf("%s", commands[0].argv[1]);
-            for (int i = 2; i < commands[i].argc; i++) {
-                printf(" %s", commands[0].argv[i]);
-            }
-            printf("\n");
-        } else if (strcmp(commands[0].argv[0], "type") == 0) {
-            handle_type(commands[0].argv);
-        } else if (strcmp(commands[0].argv[0], "pwd") == 0) {
-            char cwd[PATH_MAX];
-            getcwd(cwd, sizeof(cwd));
-            printf("%s\n", cwd);
-        } else if (strcmp(commands[0].argv[0], "cd") == 0) {
-            char* path;
-            if (commands[0].argc == 1) {
-                path = strdup("~");
-            } else if (strcmp(commands[0].argv[1], "") == 0) {
-                path = strdup(".");
-            } else {
-                path = strdup(commands[0].argv[1]);
-            }
+        if (commands[0].argc == 0 || strcmp(commands[0].argv[0], "") == 0) continue;
 
-            if (strncmp(path, "~", 1) == 0) {
-                char* home = getenv("HOME");
-                char* expanded = malloc(strlen(path) + strlen(home));
-                strcpy(expanded, home);
-                strcpy(expanded + strlen(home), path + 1);
-                free(path);
-                path = expanded;
-            }
-            DIR* d = opendir(path);
-            if (d) {
-                closedir(d);
-                chdir(path);
-            } else if (errno == ENOENT) {
-                printf("cd: %s: No such file or directory\n", path);
-            }
-            free(path);
-        } else {
-            char* exec_path = find_executable(commands[0].argv[0]);
-            if (!exec_path) {
-                printf("%s: command not found\n", commands[0].argv[0]);
-                continue;
-            }
-
-            pid_t pid = fork();
-
-            if (pid == 0) {
-                execv(exec_path, commands[0].argv);
-                exit(127);
-            } else {
-                waitpid(pid, 0, 0);
-            }
-
-            free(exec_path);
-        }
+        if (strcmp(commands[0].argv[0], "exit") == 0) break;
+        
+        execute_command(commands[0]);
 
         if (commands[0].stdout_path != NULL) {
             freopen("/dev/tty", "w", stdout);
