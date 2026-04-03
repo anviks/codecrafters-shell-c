@@ -346,6 +346,21 @@ void execute_command(Command command) {
                     }
 
                     fclose(fd);
+                } else if (strcmp(arg, "-a") == 0) {
+                    char* filename = command.argv[2];
+                    if (filename == NULL) {
+                        fprintf(stderr, "history: -a: filename must be specified\n");
+                        return;
+                    }
+
+                    FILE* fd = fopen(filename, "a");
+
+                    HIST_ENTRY** history = history_list();
+                    for (int i = 0; history[i] != NULL; i++) {
+                        fprintf(fd, "%s\n", history[i]->line);
+                    }
+
+                    fclose(fd);
                 } else {
                     fprintf(stderr, "history: %s: invalid option\n", arg);
                     return;
