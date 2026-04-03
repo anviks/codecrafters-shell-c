@@ -170,11 +170,16 @@ void push_command(Command* commands, int* count, Command* cur, int argv_i) {
     commands[(*count)++] = *cur;
 }
 
+Command new_command() {
+    Command command = {0};
+    command.argv = malloc(1024 * sizeof(char*));
+    return command;
+}
+
 int parse_commands(char* input, Command* commands) {
     RedirectMode redirect_mode = NONE;
     State state = NORMAL;
-    Command cur_cmd = {0};
-    cur_cmd.argv = malloc(1024 * sizeof(char*));
+    Command cur_cmd = new_command();
     char* cur_arg = malloc(1024);
     int cur_cmd_i = 0, cur_argv_i = 0, cur_arg_i = 0;
 
@@ -201,8 +206,7 @@ int parse_commands(char* input, Command* commands) {
                         redirect_mode = APPEND_STDERR;
                     } else if (strcmp(cur_arg, "|") == 0) {
                         push_command(commands, &cur_cmd_i, &cur_cmd, cur_argv_i);
-                        cur_cmd = (Command){0};
-                        cur_cmd.argv = malloc(1024 * sizeof(char*));
+                        cur_cmd = new_command();
                         cur_argv_i = 0;
                         free(cur_arg);
                         cur_arg = malloc(1024);
@@ -235,12 +239,14 @@ int parse_commands(char* input, Command* commands) {
         }
     }
 
-    cur_arg[cur_arg_i] = '\0';
-    if (redirect_mode == NONE) {
-        cur_cmd.argv[cur_argv_i++] = strdup(cur_arg);
-    } else {
-        apply_redirect(&cur_cmd, redirect_mode, cur_arg);
-        redirect_mode = NONE;
+    if (cur_arg_i > 0) {
+        cur_arg[cur_arg_i] = '\0';
+        if (redirect_mode == NONE) {
+            cur_cmd.argv[cur_argv_i++] = strdup(cur_arg);
+        } else {
+            apply_redirect(&cur_cmd, redirect_mode, cur_arg);
+            redirect_mode = NONE;
+        }
     }
 
     free(cur_arg);
