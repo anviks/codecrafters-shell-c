@@ -257,6 +257,32 @@ int parse_commands(char* input, Command* commands) {
     return cur_cmd_i;
 }
 
+void load_history(char* filename) {
+    FILE* fd = fopen(filename, "r");
+    char* line = NULL;
+    size_t len = 0;
+
+    while ((getline(&line, &len, fd)) != -1) {
+        if (strcmp(line, "\n") != 0) {
+            line[strlen(line) - 1] = '\0';
+            add_history(line);
+        }
+    }
+
+    if (line) free(line);
+    fclose(fd);
+}
+
+void save_history(char* filename, char* mode) {
+    FILE* fd = fopen(filename, mode);
+
+    HIST_ENTRY** history = history_list();
+    for (int i = 0; history[i] != NULL; i++) {
+        fprintf(fd, "%s\n", history[i]->line);
+    }
+
+    fclose(fd);
+}
 
 void handle_history_options(char** argv) {
     if (
@@ -276,27 +302,11 @@ void handle_history_options(char** argv) {
         return;
     }
 
-    FILE* fd = fopen(filename, mode);
-    
     if (mode[0] == 'r') {
-        char* line = NULL;
-        size_t len = 0;
-
-        while ((getline(&line, &len, fd)) != -1) {
-            if (strcmp(line, "\n") != 0) {
-                line[strlen(line) - 1] = '\0';
-                add_history(line);
-            }
-        }
-        if (line) free(line);
+        load_history(filename);
     } else {
-        HIST_ENTRY** history = history_list();
-        for (int i = 0; history[i] != NULL; i++) {
-            fprintf(fd, "%s\n", history[i]->line);
-        }
+        save_history(filename, mode);
     }
-
-    fclose(fd);
 }
 
 void execute_command(Command command) {
@@ -403,6 +413,11 @@ void log_args(int command_count, Command* commands) {
 int main() {
     setbuf(stdout, NULL);  // Flush after every printf
     rl_attempted_completion_function = shell_completion;
+
+    char* histfile = getenv("HISTFILE");
+    if (histfile != NULL && strcmp(histfile, "") != 0) {
+        load_history(histfile);
+    }
 
     char* input;
     while ((input = readline("$ ")) != NULL) {
