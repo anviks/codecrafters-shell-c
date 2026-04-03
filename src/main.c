@@ -494,5 +494,9 @@ int main() {
         free(commands);
     }
 
+    if (histfile != NULL && strcmp(histfile, "") != 0) {
+        save_history(histfile, "a");
+    }
+
     return 0;
 }
