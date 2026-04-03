@@ -268,9 +268,11 @@ void execute_command(Command command) {
     }
 
     if (strcmp(command.argv[0], "echo") == 0) {
-        printf("%s", command.argv[1]);
-        for (int i = 2; command.argv[i] != NULL; i++) {
-            printf(" %s", command.argv[i]);
+        if (command.argv[1] != NULL) {
+            printf("%s", command.argv[1]);
+            for (int i = 2; command.argv[i] != NULL; i++) {
+                printf(" %s", command.argv[i]);
+            }
         }
         printf("\n");
     } else if (strcmp(command.argv[0], "type") == 0) {
