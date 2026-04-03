@@ -257,6 +257,63 @@ int parse_commands(char* input, Command* commands) {
     return cur_cmd_i;
 }
 
+void handle_history_options(char** argv) {
+    if (strcmp(argv[1], "-r") == 0) {
+        char* filename = argv[2];
+        if (filename == NULL) {
+            fprintf(stderr, "history: -r: filename must be specified\n");
+            return;
+        }
+
+        FILE* fd = fopen(filename, "r");
+        char* line = NULL;
+        size_t len = 0;
+
+        while ((getline(&line, &len, fd)) != -1) {
+            if (strcmp(line, "\n") != 0) {
+                line[strlen(line) - 1] = '\0';
+                add_history(line);
+            }
+        }
+
+        fclose(fd);
+        if (line) free(line);
+    } else if (strcmp(argv[1], "-w") == 0) {
+        char* filename = argv[2];
+        if (filename == NULL) {
+            fprintf(stderr, "history: -w: filename must be specified\n");
+            return;
+        }
+
+        FILE* fd = fopen(filename, "w");
+
+        HIST_ENTRY** history = history_list();
+        for (int i = 0; history[i] != NULL; i++) {
+            fprintf(fd, "%s\n", history[i]->line);
+        }
+
+        fclose(fd);
+    } else if (strcmp(argv[1], "-a") == 0) {
+        char* filename = argv[2];
+        if (filename == NULL) {
+            fprintf(stderr, "history: -a: filename must be specified\n");
+            return;
+        }
+
+        FILE* fd = fopen(filename, "a");
+
+        HIST_ENTRY** history = history_list();
+        for (int i = 0; history[i] != NULL; i++) {
+            fprintf(fd, "%s\n", history[i]->line);
+        }
+
+        fclose(fd);
+    } else {
+        fprintf(stderr, "history: %s: invalid option\n", argv[1]);
+        return;
+    }
+}
+
 void execute_command(Command command) {
     if (command.stdout_path != NULL) {
         freopen(command.stdout_path, command.stdout_append ? "a" : "w", stdout);
@@ -311,61 +368,7 @@ void execute_command(Command command) {
         char* arg;
         if ((arg = command.argv[1]) != NULL) {
             if (arg[0] == '-') {
-                if (strcmp(arg, "-r") == 0) {
-                    char* filename = command.argv[2];
-                    if (filename == NULL) {
-                        fprintf(stderr, "history: -r: filename must be specified\n");
-                        return;
-                    }
-
-                    FILE* fd = fopen(filename, "r");
-                    char* line = NULL;
-                    size_t len = 0;
-
-                    while ((getline(&line, &len, fd)) != -1) {
-                        if (strcmp(line, "\n") != 0) {
-                            line[strlen(line) - 1] = '\0';
-                            add_history(line);
-                        }
-                    }
-
-                    fclose(fd);
-                    if (line) free(line);
-                } else if (strcmp(arg, "-w") == 0) {
-                    char* filename = command.argv[2];
-                    if (filename == NULL) {
-                        fprintf(stderr, "history: -w: filename must be specified\n");
-                        return;
-                    }
-
-                    FILE* fd = fopen(filename, "w");
-
-                    HIST_ENTRY** history = history_list();
-                    for (int i = 0; history[i] != NULL; i++) {
-                        fprintf(fd, "%s\n", history[i]->line);
-                    }
-
-                    fclose(fd);
-                } else if (strcmp(arg, "-a") == 0) {
-                    char* filename = command.argv[2];
-                    if (filename == NULL) {
-                        fprintf(stderr, "history: -a: filename must be specified\n");
-                        return;
-                    }
-
-                    FILE* fd = fopen(filename, "a");
-
-                    HIST_ENTRY** history = history_list();
-                    for (int i = 0; history[i] != NULL; i++) {
-                        fprintf(fd, "%s\n", history[i]->line);
-                    }
-
-                    fclose(fd);
-                } else {
-                    fprintf(stderr, "history: %s: invalid option\n", arg);
-                    return;
-                }
-                return;
+                handle_history_options(command.argv);
             } else {
                 char* endptr;
                 limit = strtol(arg, &endptr, 10);
