@@ -1,17 +1,16 @@
-#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <linux/limits.h>
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
 
 #ifdef _WIN32
 #define PATH_LIST_SEPARATOR ";"
@@ -309,15 +308,43 @@ void execute_command(Command command) {
         free(path);
     } else if (strcmp(command.argv[0], "history") == 0) {
         int limit = 1000;
-        char* str, endptr;
-        if ((str = command.argv[1]) != NULL) {
-            char* endptr;
-            limit = strtol(str, &endptr, 10);
-            if (*endptr != '\0') {
-                fprintf(stderr, "history: %s: numeric argument required\n", str);
+        char* arg;
+        if ((arg = command.argv[1]) != NULL) {
+            if (arg[0] == '-') {
+                if (strcmp(arg, "-r") == 0) {
+                    char* filename = command.argv[2];
+                    if (filename == NULL) {
+                        fprintf(stderr, "history: -r: filename must be specified\n");
+                        return;
+                    }
+
+                    FILE* fd = fopen(filename, "r");
+                    char* line = NULL;
+                    size_t len = 0;
+
+                    while ((getline(&line, &len, fd)) != -1) {
+                        if (strcmp(line, "\n") != 0) {
+                            line[strlen(line) - 1] = '\0';
+                            add_history(line);
+                        }
+                    }
+
+                    fclose(fd);
+                    if (line) free(line);
+                } else {
+                    fprintf(stderr, "history: %s: invalid option\n", arg);
+                    return;
+                }
                 return;
+            } else {
+                char* endptr;
+                limit = strtol(arg, &endptr, 10);
+                if (*endptr != '\0') {
+                    free(endptr);
+                    fprintf(stderr, "history: %s: numeric argument required\n", arg);
+                    return;
+                }
             }
-            if (limit < 0) limit = 0;
         }
 
         HIST_ENTRY** history = history_list();
