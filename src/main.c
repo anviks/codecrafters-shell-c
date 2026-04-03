@@ -348,10 +348,7 @@ void execute_command(Command command) {
         }
 
         HIST_ENTRY** history = history_list();
-        int h_count = 0;
-        while (history[h_count] != NULL) h_count++;
-
-        int start = limit >= h_count ? 0 : h_count - limit;
+        int start = limit >= history_length ? 0 : history_length - limit;
         for (int i = start; history[i] != NULL; i++) {
             printf("    %d  %s\n", i + 1, history[i]->line);
         }
