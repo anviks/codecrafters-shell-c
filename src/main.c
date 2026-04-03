@@ -171,7 +171,7 @@ void push_command(Command* commands, int* count, Command* cur, int* argv_i) {
     commands[(*count)++] = *cur;
 }
 
-int parse_args(char* command, Command* commands) {
+int parse_commands(char* input, Command* commands) {
     RedirectMode redirect_mode = NONE;
     State state = NORMAL;
     Command cur_cmd = {0};
@@ -179,12 +179,12 @@ int parse_args(char* command, Command* commands) {
     char* cur_arg = malloc(1024);
     int cur_cmd_i = 0, cur_argv_i = 0, cur_arg_i = 0;
 
-    for (int i = 0; command[i] != '\0'; i++) {
-        char c = command[i];
+    for (int i = 0; input[i] != '\0'; i++) {
+        char c = input[i];
         switch (state) {
         case NORMAL:
             if (c == '\\')
-                cur_arg[cur_arg_i++] = command[++i];
+                cur_arg[cur_arg_i++] = input[++i];
             else if (c == '\'')
                 state = IN_SINGLE_QUOTE;
             else if (c == '"')
@@ -227,7 +227,7 @@ int parse_args(char* command, Command* commands) {
             break;
         case IN_DOUBLE_QUOTE:
             if (c == '\\')
-                cur_arg[cur_arg_i++] = command[++i];
+                cur_arg[cur_arg_i++] = input[++i];
             else if (c == '"')
                 state = NORMAL;
             else
@@ -264,14 +264,14 @@ int main() {
     setbuf(stdout, NULL);  // Flush after every printf
     rl_attempted_completion_function = shell_completion;
 
-    char* command;
-    while ((command = readline("$ ")) != NULL) {
-        if (*command) add_history(command);
+    char* input;
+    while ((input = readline("$ ")) != NULL) {
+        if (*input) add_history(input);
 
         Command* commands = malloc(128 * sizeof(Command));
-        int command_count = parse_args(command, commands);
+        int command_count = parse_commands(input, commands);
 
-        free(command);
+        free(input);
 
         if (commands[0].argc == 0 || strcmp(commands[0].argv[0], "") == 0) continue;
 
