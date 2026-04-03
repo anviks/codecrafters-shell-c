@@ -1,14 +1,15 @@
 #include <dirent.h>
 #include <errno.h>
 #include <linux/limits.h>
+#include <readline/history.h>
+#include <readline/readline.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+
 
 #ifdef _WIN32
 #define PATH_LIST_SEPARATOR ";"
@@ -100,13 +101,11 @@ static char* completion_generator(const char* text, int state) {
 
     while (builtins[builtin_idx] != NULL) {
         char* b = builtins[builtin_idx++];
-        if (strncmp(b, text, strlen(text)) == 0)
-            return strdup(b);
+        if (strncmp(b, text, strlen(text)) == 0) return strdup(b);
     }
 
     if (exec_matches) {
-        while (exec_matches[exec_idx] != NULL)
-            return exec_matches[exec_idx++];
+        while (exec_matches[exec_idx] != NULL) return exec_matches[exec_idx++];
     }
 
     return NULL;
@@ -138,6 +137,129 @@ void handle_type(char** argv) {
 typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
 typedef enum { NONE, STDOUT, STDERR, APPEND_STDOUT, APPEND_STDERR } RedirectMode;
 
+typedef struct {
+    char** argv;
+    int argc;
+
+    char* stdout_path;
+    char* stderr_path;
+    int stdout_append;
+    int stderr_append;
+} Command;
+
+void apply_redirect(Command* cmd, RedirectMode mode, const char* path) {
+    switch (mode) {
+        case APPEND_STDOUT:
+            cmd->stdout_append = 1;
+            // fallthrough
+        case STDOUT:
+            cmd->stdout_path = strdup(path);
+            break;
+        case APPEND_STDERR:
+            cmd->stderr_append = 1;
+            // fallthrough
+        case STDERR:
+            cmd->stderr_path = strdup(path);
+            break;
+        default:
+            break;
+    }
+}
+
+void push_command(Command* commands, int* count, Command* cur, int* argv_i) {
+    cur->argc = *argv_i;
+    commands[(*count)++] = *cur;
+}
+
+int parse_args(char* command, Command* commands) {
+    RedirectMode redirect_mode = NONE;
+    State state = NORMAL;
+    Command cur_cmd = {0};
+    cur_cmd.argv = malloc(1024 * sizeof(char*));
+    char* cur_arg = malloc(1024);
+    int cur_cmd_i = 0, cur_argv_i = 0, cur_arg_i = 0;
+
+    for (int i = 0; command[i] != '\0'; i++) {
+        char c = command[i];
+        switch (state) {
+        case NORMAL:
+            if (c == '\\')
+                cur_arg[cur_arg_i++] = command[++i];
+            else if (c == '\'')
+                state = IN_SINGLE_QUOTE;
+            else if (c == '"')
+                state = IN_DOUBLE_QUOTE;
+            else if (c == ' ') {
+                if (cur_arg_i > 0) {
+                    cur_arg[cur_arg_i] = '\0';
+                    if (strcmp(cur_arg, ">") == 0 || strcmp(cur_arg, "1>") == 0) {
+                        redirect_mode = STDOUT;
+                    } else if (strcmp(cur_arg, "2>") == 0) {
+                        redirect_mode = STDERR;
+                    } else if (strcmp(cur_arg, ">>") == 0 || strcmp(cur_arg, "1>>") == 0) {
+                        redirect_mode = APPEND_STDOUT;
+                    } else if (strcmp(cur_arg, "2>>") == 0) {
+                        redirect_mode = APPEND_STDERR;
+                    } else if (strcmp(cur_arg, "|") == 0) {
+                        push_command(commands, &cur_cmd_i, &cur_cmd, &cur_argv_i);
+                        cur_cmd = (Command){0};
+                        cur_cmd.argv = malloc(1024 * sizeof(char*));
+                        cur_argv_i = 0;
+                        free(cur_arg);
+                        cur_arg = malloc(1024);
+                        cur_arg_i = 0;
+                    } else if (redirect_mode == NONE) {
+                        cur_cmd.argv[cur_argv_i++] = strdup(cur_arg);
+                    } else {
+                        apply_redirect(&cur_cmd, redirect_mode, cur_arg);
+                        redirect_mode = NONE;
+                    }
+                    cur_arg_i = 0;
+                }
+            } else
+                cur_arg[cur_arg_i++] = c;
+            break;
+        case IN_SINGLE_QUOTE:
+            if (c == '\'')
+                state = NORMAL;
+            else
+                cur_arg[cur_arg_i++] = c;
+            break;
+        case IN_DOUBLE_QUOTE:
+            if (c == '\\')
+                cur_arg[cur_arg_i++] = command[++i];
+            else if (c == '"')
+                state = NORMAL;
+            else
+                cur_arg[cur_arg_i++] = c;
+            break;
+        }
+    }
+
+    cur_arg[cur_arg_i] = '\0';
+    if (redirect_mode == NONE) {
+        cur_cmd.argv[cur_argv_i++] = strdup(cur_arg);
+    } else {
+        apply_redirect(&cur_cmd, redirect_mode, cur_arg);
+        redirect_mode = NONE;
+    }
+
+    free(cur_arg);
+
+    push_command(commands, &cur_cmd_i, &cur_cmd, &cur_argv_i);
+
+    return cur_cmd_i;
+}
+
+void log_args(int command_count, Command* commands) {
+    for (int i = 0; i < command_count; i++) {
+        for (int j = 0; j < commands[i].argc; j++) {
+            printf("Arg %d: %s\n", j, commands[i].argv[j]);
+        }
+        printf("\n");
+    }
+}
+
 int main() {
     setbuf(stdout, NULL);  // Flush after every printf
     rl_attempted_completion_function = shell_completion;
@@ -146,107 +268,43 @@ int main() {
     while ((command = readline("$ ")) != NULL) {
         if (*command) add_history(command);
 
-        State state = NORMAL;
-        RedirectMode redirect = NONE;
-        char* redirect_file;
-        char** argv = malloc(1024 * sizeof(char*));
-        char* running_arg = malloc(1024);
-        int argv_i = 0, running_arg_i = 0;
-
-        for (int i = 0; command[i] != '\0'; i++) {
-            char c = command[i];
-            switch (state) {
-                case NORMAL:
-                    if (c == '\\')
-                        running_arg[running_arg_i++] = command[++i];
-                    else if (c == '\'')
-                        state = IN_SINGLE_QUOTE;
-                    else if (c == '"')
-                        state = IN_DOUBLE_QUOTE;
-                    else if (c == ' ') {
-                        if (running_arg_i > 0) {
-                            running_arg[running_arg_i] = '\0';
-                            if (strcmp(running_arg, ">") == 0 || strcmp(running_arg, "1>") == 0) {
-                                redirect = STDOUT;
-                            } else if (strcmp(running_arg, "2>") == 0) {
-                                redirect = STDERR;
-                            } else if (strcmp(running_arg, ">>") == 0 || strcmp(running_arg, "1>>") == 0) {
-                                redirect = APPEND_STDOUT;
-                            } else if (strcmp(running_arg, "2>>") == 0) {
-                                redirect = APPEND_STDERR;
-                            } else if (redirect == NONE) {
-                                argv[argv_i++] = strdup(running_arg);
-                            } else {
-                                redirect_file = strdup(running_arg);
-                            }
-                            running_arg_i = 0;
-                        }
-                    } else
-                        running_arg[running_arg_i++] = c;
-                    break;
-                case IN_SINGLE_QUOTE:
-                    if (c == '\'') state = NORMAL;
-                    else running_arg[running_arg_i++] = c;
-                    break;
-                case IN_DOUBLE_QUOTE:
-                    if (c == '\\') running_arg[running_arg_i++] = command[++i];
-                    else if (c == '"') state = NORMAL;
-                    else running_arg[running_arg_i++] = c;
-                    break;
-            }
-        }
-
-        running_arg[running_arg_i] = '\0';
-        if (redirect == NONE) {
-            argv[argv_i++] = strdup(running_arg);
-        } else {
-            redirect_file = strdup(running_arg);
-        }
-        argv[argv_i] = NULL;
-
-        for (int i = 0; argv[i] != NULL; i++) {
-            printf("Arg %d: %s\n", i, argv[i]);
-        }
+        Command* commands = malloc(128 * sizeof(Command));
+        int command_count = parse_args(command, commands);
 
         free(command);
-        free(running_arg);
 
-        if (argv[0] == NULL || strcmp(argv[0], "") == 0) continue;
+        if (commands[0].argc == 0 || strcmp(commands[0].argv[0], "") == 0) continue;
 
-        if (strcmp(argv[0], "exit") == 0) break;
+        if (strcmp(commands[0].argv[0], "exit") == 0) break;
 
-        if (redirect == STDOUT) {
-            freopen(redirect_file, "w", stdout);
-        } else if (redirect == STDERR) {
-            freopen(redirect_file, "w", stderr);
-        } else if (redirect == APPEND_STDOUT) {
-            freopen(redirect_file, "a", stdout);
-        } else if (redirect == APPEND_STDERR) {
-            freopen(redirect_file, "a", stderr);
+        if (commands[0].stdout_path != NULL) {
+            freopen(commands[0].stdout_path, commands[0].stdout_append ? "a" : "w", stdout);
         }
 
-        if (redirect != NONE) free(redirect_file);
+        if (commands[0].stderr_path != NULL) {
+            freopen(commands[0].stderr_path, commands[0].stderr_append ? "a" : "w", stderr);
+        }
 
-        if (strcmp(argv[0], "echo") == 0) {
-            printf("%s", argv[1]);
-            for (int i = 2; argv[i] != NULL; i++) {
-                printf(" %s", argv[i]);
+        if (strcmp(commands[0].argv[0], "echo") == 0) {
+            printf("%s", commands[0].argv[1]);
+            for (int i = 2; i < commands[i].argc; i++) {
+                printf(" %s", commands[0].argv[i]);
             }
             printf("\n");
-        } else if (strcmp(argv[0], "type") == 0) {
-            handle_type(argv);
-        } else if (strcmp(argv[0], "pwd") == 0) {
+        } else if (strcmp(commands[0].argv[0], "type") == 0) {
+            handle_type(commands[0].argv);
+        } else if (strcmp(commands[0].argv[0], "pwd") == 0) {
             char cwd[PATH_MAX];
             getcwd(cwd, sizeof(cwd));
             printf("%s\n", cwd);
-        } else if (strcmp(argv[0], "cd") == 0) {
+        } else if (strcmp(commands[0].argv[0], "cd") == 0) {
             char* path;
-            if (argv[1] == NULL) {
+            if (commands[0].argc == 1) {
                 path = strdup("~");
-            } else if (strcmp(argv[1], "") == 0) {
+            } else if (strcmp(commands[0].argv[1], "") == 0) {
                 path = strdup(".");
             } else {
-                path = strdup(argv[1]);
+                path = strdup(commands[0].argv[1]);
             }
 
             if (strncmp(path, "~", 1) == 0) {
@@ -266,16 +324,16 @@ int main() {
             }
             free(path);
         } else {
-            char* exec_path = find_executable(argv[0]);
+            char* exec_path = find_executable(commands[0].argv[0]);
             if (!exec_path) {
-                printf("%s: command not found\n", argv[0]);
+                printf("%s: command not found\n", commands[0].argv[0]);
                 continue;
             }
 
             pid_t pid = fork();
 
             if (pid == 0) {
-                execv(exec_path, argv);
+                execv(exec_path, commands[0].argv);
                 exit(127);
             } else {
                 waitpid(pid, 0, 0);
@@ -284,12 +342,25 @@ int main() {
             free(exec_path);
         }
 
-        if (redirect == STDOUT || redirect == APPEND_STDOUT) {
+        if (commands[0].stdout_path != NULL) {
             freopen("/dev/tty", "w", stdout);
             setbuf(stdout, NULL);  // Flush after every printf
-        } else if (redirect == STDERR || redirect == APPEND_STDERR) {
+        } else if (commands[0].stderr_path != NULL) {
             freopen("/dev/tty", "w", stderr);
         }
+
+        for (int i = 0; i < command_count; i++) {
+            for (int j = 0; j < commands[i].argc; j++) {
+                free(commands[i].argv[j]);
+            }
+
+            free(commands[i].argv);
+
+            free(commands[i].stdout_path);
+            free(commands[i].stderr_path);
+        }
+
+        free(commands);
     }
 
     return 0;
