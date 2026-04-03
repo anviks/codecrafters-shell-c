@@ -361,14 +361,19 @@ int main() {
 
     char* input;
     while ((input = readline("$ ")) != NULL) {
-        if (*input) add_history(input);
-
         Command* commands = malloc(128 * sizeof(Command));
         int command_count = parse_commands(input, commands);
 
+        if (
+            commands[0].argv[0] != NULL
+            && (history_length == 0
+                || strcmp(input, history_get(history_base + history_length - 1)->line) != 0)
+        ) {
+            add_history(input);
+        }
         free(input);
 
-        if (commands[0].argv[0] == NULL || strcmp(commands[0].argv[0], "") == 0) continue;
+        if (commands[0].argv[0] == NULL) continue;
         if (strcmp(commands[0].argv[0], "exit") == 0) break;
 
         int pipes[command_count - 1][2];
