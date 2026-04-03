@@ -17,7 +17,7 @@
 #define PATH_LIST_SEPARATOR ":"
 #endif
 
-static char* builtins[] = {"echo", "exit", "type", "pwd", "cd", NULL};
+static char* builtins[] = {"echo", "exit", "type", "pwd", "cd", "history", NULL};
 
 int cmp(const void* a, const void* b) {
     return strcmp(*(const char**)a, *(const char**)b);
@@ -303,6 +303,11 @@ void execute_command(Command command) {
             fprintf(stderr, "cd: %s: No such file or directory\n", path);
         }
         free(path);
+    } else if (strcmp(command.argv[0], "history") == 0) {
+        HIST_ENTRY** history = history_list();
+        for (int i = 0; history[i] != NULL; i++) {
+            printf("    %d  %s\n", i + 1, history[i]->line);
+        }
     } else {
         char* exec_path = find_executable(command.argv[0]);
         if (!exec_path) {
