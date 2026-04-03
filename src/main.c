@@ -139,7 +139,6 @@ typedef enum { NONE, STDOUT, STDERR, APPEND_STDOUT, APPEND_STDERR } RedirectMode
 
 typedef struct {
     char** argv;
-    int argc;
 
     char* stdout_path;
     char* stderr_path;
@@ -166,8 +165,8 @@ void apply_redirect(Command* cmd, RedirectMode mode, const char* path) {
     }
 }
 
-void push_command(Command* commands, int* count, Command* cur, int* argv_i) {
-    cur->argc = *argv_i;
+void push_command(Command* commands, int* count, Command* cur, int argv_i) {
+    cur->argv[argv_i] = NULL;
     commands[(*count)++] = *cur;
 }
 
@@ -201,7 +200,7 @@ int parse_commands(char* input, Command* commands) {
                     } else if (strcmp(cur_arg, "2>>") == 0) {
                         redirect_mode = APPEND_STDERR;
                     } else if (strcmp(cur_arg, "|") == 0) {
-                        push_command(commands, &cur_cmd_i, &cur_cmd, &cur_argv_i);
+                        push_command(commands, &cur_cmd_i, &cur_cmd, cur_argv_i);
                         cur_cmd = (Command){0};
                         cur_cmd.argv = malloc(1024 * sizeof(char*));
                         cur_argv_i = 0;
@@ -246,7 +245,7 @@ int parse_commands(char* input, Command* commands) {
 
     free(cur_arg);
 
-    push_command(commands, &cur_cmd_i, &cur_cmd, &cur_argv_i);
+    push_command(commands, &cur_cmd_i, &cur_cmd, cur_argv_i);
 
     return cur_cmd_i;
 }
@@ -262,7 +261,7 @@ void execute_command(Command command) {
 
     if (strcmp(command.argv[0], "echo") == 0) {
         printf("%s", command.argv[1]);
-        for (int i = 2; i < command.argc; i++) {
+        for (int i = 2; command.argv[i] != NULL; i++) {
             printf(" %s", command.argv[i]);
         }
         printf("\n");
@@ -274,7 +273,7 @@ void execute_command(Command command) {
         printf("%s\n", cwd);
     } else if (strcmp(command.argv[0], "cd") == 0) {
         char* path;
-        if (command.argc == 1) {
+        if (command.argv[1] == NULL) {
             path = strdup("~");
         } else if (strcmp(command.argv[1], "") == 0) {
             path = strdup(".");
@@ -327,7 +326,7 @@ void execute_command(Command command) {
 
 void log_args(int command_count, Command* commands) {
     for (int i = 0; i < command_count; i++) {
-        for (int j = 0; j < commands[i].argc; j++) {
+        for (int j = 0; commands[i].argv[j] != NULL; j++) {
             printf("Arg %d: %s\n", j, commands[i].argv[j]);
         }
         printf("\n");
@@ -347,7 +346,7 @@ int main() {
 
         free(input);
 
-        if (commands[0].argc == 0 || strcmp(commands[0].argv[0], "") == 0) continue;
+        if (commands[0].argv[0] == NULL || strcmp(commands[0].argv[0], "") == 0) continue;
         if (strcmp(commands[0].argv[0], "exit") == 0) break;
 
         int pipes[command_count - 1][2];
@@ -391,7 +390,7 @@ int main() {
         }
 
         for (int i = 0; i < command_count; i++) {
-            for (int j = 0; j < commands[i].argc; j++) {
+            for (int j = 0; commands[i].argv[j] != NULL; j++) {
                 free(commands[i].argv[j]);
             }
 
