@@ -18,7 +18,7 @@
 #define PATH_LIST_SEPARATOR ":"
 #endif
 
-static char* builtins[] = {"echo", "exit", "type", "pwd", "cd", "history", NULL};
+static char* builtins[] = {"echo", "exit", "type", "pwd", "cd", "history", "jobs", NULL};
 
 int cmp(const void* a, const void* b) {
     return strcmp(*(const char**)a, *(const char**)b);
@@ -137,6 +137,7 @@ void handle_type(char** argv) {
 
 typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
 typedef enum { NONE, STDOUT, STDERR, APPEND_STDOUT, APPEND_STDERR } RedirectMode;
+typedef enum { RUNNING, STOPPED, DONE } JobStatus;
 
 typedef struct {
     char** argv;
@@ -146,6 +147,13 @@ typedef struct {
     int stdout_append;
     int stderr_append;
 } Command;
+
+typedef struct {
+    pid_t pid;
+    int job_number;
+    JobStatus status;
+    char* command;
+} Job;
 
 void apply_redirect(Command* cmd, RedirectMode mode, const char* path) {
     switch (mode) {
@@ -343,7 +351,6 @@ void execute_command(Command command) {
                 char* endptr;
                 limit = strtol(arg, &endptr, 10);
                 if (*endptr != '\0') {
-                    free(endptr);
                     fprintf(stderr, "history: %s: numeric argument required\n", arg);
                     return;
                 }
@@ -355,6 +362,8 @@ void execute_command(Command command) {
         for (int i = start; history[i] != NULL; i++) {
             printf("    %d  %s\n", i + 1, history[i]->line);
         }
+    } else if (strcmp(command.argv[0], "jobs") == 0) {
+        printf("\n");
     } else {
         char* exec_path = find_executable(command.argv[0]);
         if (!exec_path) {
@@ -393,6 +402,9 @@ int main() {
         read_history(histfile);
     }
 
+    Job* jobs = malloc(1024 * sizeof(Job));
+    int job_i = 0;
+
     char* input;
     while ((input = readline("$ ")) != NULL) {
         Command* commands = malloc(128 * sizeof(Command));
@@ -405,12 +417,31 @@ int main() {
         ) {
             add_history(input);
         }
-        free(input);
 
         if (commands[0].argv[0] == NULL) continue;
+        
+        int is_job = 0;
+        char** last_args = commands[command_count - 1].argv;
+        int last_argv = -1;
+        while (last_args[++last_argv] != NULL);
+        last_argv--;
+
+        if (strcmp(last_args[last_argv], "&") == 0) {
+            last_args[last_argv] = NULL;
+            jobs[job_i] = (Job){
+                .command = strdup(input),
+                .job_number = job_i + 1,
+                .status = RUNNING,
+            };
+            job_i++;
+            is_job = 1;
+        }
+
+        free(input);
+
         if (strcmp(commands[0].argv[0], "exit") == 0) break;
 
-        if (command_count == 1) {
+        if (command_count == 1 && !is_job) {
             execute_command(commands[0]);
         } else {
             int pipes[command_count - 1][2];
@@ -419,8 +450,14 @@ int main() {
                 pipe(pipes[i]);
             }
 
+            pid_t pgid = 0;
+
             for (int i = 0; i < command_count; i++) {
-                if (fork() == 0) {
+                pid_t pid = fork();
+
+                if (pid == 0) {
+                    setpgid(0, pgid == 0 ? 0 : pgid);
+
                     // read from left
                     if (i > 0) {
                         dup2(pipes[i - 1][0], STDIN_FILENO);
@@ -440,6 +477,13 @@ int main() {
                     execute_command(commands[i]);
                     exit(0);
                 }
+
+                if (pgid == 0) pgid = pid;
+                setpgid(pid, pgid);
+            }
+
+            if (is_job) {
+                jobs[job_i - 1].pid = pgid;
             }
 
             // now close pipe fd-s in the parent process
@@ -448,9 +492,10 @@ int main() {
                 close(pipes[i][1]);
             }
 
-            // wait for children to finish
-            for (int i = 0; i < command_count; i++) {
-                wait(NULL);
+            if (is_job) {
+                waitpid(-pgid, NULL, WNOHANG);
+            } else {
+                while (waitpid(-pgid, NULL, 0) > 0);
             }
         }
 
