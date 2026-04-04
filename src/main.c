@@ -484,6 +484,7 @@ int main() {
 
             if (is_job) {
                 jobs[job_i - 1].pid = pgid;
+                printf("[%d] %d\n", jobs[job_i - 1].job_number, jobs[job_i - 1].pid);
             }
 
             // now close pipe fd-s in the parent process
