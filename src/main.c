@@ -409,6 +409,7 @@ int main() {
     char* histfile = getenv("HISTFILE");
     if (histfile != NULL && strcmp(histfile, "") != 0) {
         read_history(histfile);
+        history_entries_saved = history_length;
     }
 
     Job* jobs = malloc(1024 * sizeof(Job));
