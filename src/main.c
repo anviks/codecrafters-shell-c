@@ -307,9 +307,13 @@ void handle_history_options(char** argv) {
     }
 }
 
-void execute_command(Command command) {
-    apply_redirects(&command);
+int is_builtin(char* name) {
+    for (int i = 0; builtins[i] != NULL; i++)
+        if (strcmp(name, builtins[i]) == 0) return 1;
+    return 0;
+}
 
+void execute_builtin_command(Command command) {
     if (strcmp(command.argv[0], "echo") == 0) {
         if (command.argv[1] != NULL) {
             printf("%s", command.argv[1]);
@@ -373,20 +377,20 @@ void execute_command(Command command) {
             printf("    %d  %s\n", i + 1, history[i]->line);
         }
     } else if (strcmp(command.argv[0], "jobs") == 0) {
-    } else {
-        char* exec_path = find_executable(command.argv[0]);
-        if (!exec_path) {
-            fprintf(stderr, "%s: command not found\n", command.argv[0]);
-            return;
-        }
+    }
+}
 
-        execv(exec_path, command.argv);
-        exit(127);
-
-        free(exec_path);
+void execute_external_command(Command command) {
+    char* exec_path = find_executable(command.argv[0]);
+    if (!exec_path) {
+        fprintf(stderr, "%s: command not found\n", command.argv[0]);
+        return;
     }
 
-    restore_redirects(&command);
+    execv(exec_path, command.argv);
+    exit(127);
+
+    free(exec_path);
 }
 
 void log_args(int command_count, Command* commands) {
@@ -448,13 +452,23 @@ int main() {
         if (strcmp(commands[0].argv[0], "exit") == 0) break;
 
         if (command_count == 1 && !is_job) {
-            pid_t pid = fork();
-            if (pid == 0) {
-                execute_command(commands[0]);
-                exit(0);
+            Command command = commands[0];
+            apply_redirects(&command);
+
+            if (is_builtin(command.argv[0])) {
+                execute_builtin_command(command);
             } else {
-                waitpid(pid, 0, 0);
+                pid_t pid = fork();
+
+                if (pid == 0) {
+                    execute_external_command(command);
+                    exit(0);
+                } else {
+                    waitpid(pid, 0, 0);
+                }
             }
+
+            restore_redirects(&command);
         } else {
             int pipes[command_count - 1][2];
 
@@ -486,7 +500,16 @@ int main() {
                         close(pipes[j][1]);
                     }
 
-                    execute_command(commands[i]);
+                    Command command = commands[i];
+                    apply_redirects(&command);
+
+                    if (is_builtin(command.argv[0])) {
+                        execute_builtin_command(command);
+                    } else {
+                        execute_external_command(command);
+                    }
+
+                    restore_redirects(&command);
                     exit(0);
                 }
                 if (pgid == 0) pgid = pid;
