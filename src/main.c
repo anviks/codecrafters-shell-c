@@ -365,7 +365,6 @@ void execute_command(Command command) {
             printf("    %d  %s\n", i + 1, history[i]->line);
         }
     } else if (strcmp(command.argv[0], "jobs") == 0) {
-        printf("\n");
     } else {
         char* exec_path = find_executable(command.argv[0]);
         if (!exec_path) {
