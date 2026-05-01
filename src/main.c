@@ -161,17 +161,31 @@ void apply_redirect(Command* cmd, RedirectMode mode, const char* path) {
         case APPEND_STDOUT:
             cmd->stdout_append = 1;
             // fallthrough
-        case STDOUT:
-            cmd->stdout_path = strdup(path);
-            break;
+        case STDOUT: cmd->stdout_path = strdup(path); break;
         case APPEND_STDERR:
             cmd->stderr_append = 1;
             // fallthrough
-        case STDERR:
-            cmd->stderr_path = strdup(path);
-            break;
-        default:
-            break;
+        case STDERR: cmd->stderr_path = strdup(path); break;
+        default: break;
+    }
+}
+
+void apply_redirects(Command* cmd) {
+    if (cmd->stdout_path != NULL) {
+        freopen(cmd->stdout_path, cmd->stdout_append ? "a" : "w", stdout);
+    }
+
+    if (cmd->stderr_path != NULL) {
+        freopen(cmd->stderr_path, cmd->stderr_append ? "a" : "w", stderr);
+    }
+}
+
+void restore_redirects(Command* cmd) {
+    if (cmd->stdout_path != NULL) {
+        freopen("/dev/tty", "w", stdout);
+        setbuf(stdout, NULL);
+    } else if (cmd->stderr_path != NULL) {
+        freopen("/dev/tty", "w", stderr);
     }
 }
 
@@ -281,7 +295,7 @@ void handle_history_options(char** argv) {
         fprintf(stderr, "history: %s: filename must be specified\n", argv[1]);
         return;
     }
-    
+
     char mode = argv[1][1];
     if (mode == 'r') {
         read_history(filename);
@@ -294,13 +308,7 @@ void handle_history_options(char** argv) {
 }
 
 void execute_command(Command command) {
-    if (command.stdout_path != NULL) {
-        freopen(command.stdout_path, command.stdout_append ? "a" : "w", stdout);
-    }
-
-    if (command.stderr_path != NULL) {
-        freopen(command.stderr_path, command.stderr_append ? "a" : "w", stderr);
-    }
+    apply_redirects(&command);
 
     if (strcmp(command.argv[0], "echo") == 0) {
         if (command.argv[1] != NULL) {
@@ -384,12 +392,7 @@ void execute_command(Command command) {
         free(exec_path);
     }
 
-    if (command.stdout_path != NULL) {
-        freopen("/dev/tty", "w", stdout);
-        setbuf(stdout, NULL);
-    } else if (command.stderr_path != NULL) {
-        freopen("/dev/tty", "w", stderr);
-    }
+    restore_redirects(&command);
 }
 
 void log_args(int command_count, Command* commands) {
@@ -428,7 +431,7 @@ int main() {
         }
 
         if (commands[0].argv[0] == NULL) continue;
-        
+
         int is_job = 0;
         char** last_args = commands[command_count - 1].argv;
         int last_argv = -1;
@@ -465,7 +468,7 @@ int main() {
                 pid_t pid = fork();
 
                 if (pid == 0) {
-                    setpgid(0, pgid == 0 ? 0 : pgid);
+                    setpgid(0, pgid);
 
                     // read from left
                     if (i > 0) {
@@ -483,10 +486,17 @@ int main() {
                         close(pipes[j][1]);
                     }
 
-                    execute_command(commands[i]);
-                    exit(0);
-                }
+                    Command cmd = commands[i];
+                    apply_redirects(&cmd);
 
+                    char* exec_path = find_executable(cmd.argv[0]);
+                    if (!exec_path) {
+                        fprintf(stderr, "%s: command not found\n", cmd.argv[0]);
+                        exit(127);
+                    }
+                    execv(exec_path, cmd.argv);
+                    exit(127);
+                }
                 if (pgid == 0) pgid = pid;
                 setpgid(pid, pgid);
             }
