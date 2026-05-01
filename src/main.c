@@ -380,14 +380,8 @@ void execute_command(Command command) {
             return;
         }
 
-        pid_t pid = fork();
-
-        if (pid == 0) {
-            execv(exec_path, command.argv);
-            exit(127);
-        } else {
-            waitpid(pid, 0, 0);
-        }
+        execv(exec_path, command.argv);
+        exit(127);
 
         free(exec_path);
     }
@@ -454,7 +448,13 @@ int main() {
         if (strcmp(commands[0].argv[0], "exit") == 0) break;
 
         if (command_count == 1 && !is_job) {
-            execute_command(commands[0]);
+            pid_t pid = fork();
+            if (pid == 0) {
+                execute_command(commands[0]);
+                exit(0);
+            } else {
+                waitpid(pid, 0, 0);
+            }
         } else {
             int pipes[command_count - 1][2];
 
@@ -486,16 +486,8 @@ int main() {
                         close(pipes[j][1]);
                     }
 
-                    Command cmd = commands[i];
-                    apply_redirects(&cmd);
-
-                    char* exec_path = find_executable(cmd.argv[0]);
-                    if (!exec_path) {
-                        fprintf(stderr, "%s: command not found\n", cmd.argv[0]);
-                        exit(127);
-                    }
-                    execv(exec_path, cmd.argv);
-                    exit(127);
+                    execute_command(commands[i]);
+                    exit(0);
                 }
                 if (pgid == 0) pgid = pid;
                 setpgid(pid, pgid);
