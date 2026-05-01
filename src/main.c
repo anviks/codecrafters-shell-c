@@ -382,6 +382,13 @@ void execute_command(Command command) {
 
         free(exec_path);
     }
+
+    if (command.stdout_path != NULL) {
+        freopen("/dev/tty", "w", stdout);
+        setbuf(stdout, NULL);
+    } else if (command.stderr_path != NULL) {
+        freopen("/dev/tty", "w", stderr);
+    }
 }
 
 void log_args(int command_count, Command* commands) {
