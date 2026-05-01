@@ -19,6 +19,7 @@
 #endif
 
 static char* builtins[] = {"echo", "exit", "type", "pwd", "cd", "history", "jobs", NULL};
+static int history_entries_saved = 0;
 
 int cmp(const void* a, const void* b) {
     return strcmp(*(const char**)a, *(const char**)b);
@@ -287,7 +288,8 @@ void handle_history_options(char** argv) {
     } else if (mode == 'w') {
         write_history(filename);
     } else {
-        append_history(history_length, filename);
+        append_history(history_length - history_entries_saved, filename);
+        history_entries_saved = history_length;
     }
 }
 
