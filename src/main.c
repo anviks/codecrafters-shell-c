@@ -524,7 +524,7 @@ int main() {
     }
 
     if (histfile != NULL && strcmp(histfile, "") != 0) {
-        append_history(history_length, histfile);
+        append_history(history_length - history_entries_saved, histfile);
     }
 
     return 0;
