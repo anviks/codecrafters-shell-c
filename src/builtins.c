@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <readline/history.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -57,6 +58,14 @@ static void handle_history_options(char** argv) {
     } else {
         append_history(history_length - history_entries_saved, filename);
         history_entries_saved = history_length;
+    }
+}
+
+static void handle_complete(char** argv) {
+    if (argv[1] == NULL || argv[2] == NULL) return;
+
+    if (strcmp(argv[1], "-p") == 0) {
+        fprintf(stderr, "complete: %s: no completion specification\n", argv[2]);
     }
 }
 
@@ -129,5 +138,6 @@ void execute_builtin_command(Command command) {
         }
         delete_done_jobs();
     } else if (strcmp(command.argv[0], "complete") == 0) {
+        handle_complete(command.argv);
     }
 }
