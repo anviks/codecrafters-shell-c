@@ -13,13 +13,19 @@ void init_jobs() {
 }
 
 void add_job(pid_t pgid, char* command) {
+    int job_number = job_count > 0
+        ? jobs[job_count - 1].job_number + 1
+        : 1;
+
     jobs[job_count] = (Job){
         .pid = pgid,
-        .job_number = job_count + 1,
+        .job_number = job_number,
         .command = command,
         .status = RUNNING
     };
+
     printf("[%d] %d\n", jobs[job_count].job_number, jobs[job_count].pid);
+
     job_count++;
 }
 
