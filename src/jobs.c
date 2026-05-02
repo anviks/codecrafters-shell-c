@@ -25,8 +25,6 @@ void jobs_add(pid_t pgid, char* command) {
 
 void jobs_print() {
     for (int i = 0; i < job_count; i++) {
-        if (jobs[i].pid == 0) continue;
-
         char marker = ' ';
         if (i == job_count - 2) marker = '-';
         else if (i == job_count - 1) marker = '+';
@@ -49,9 +47,13 @@ void jobs_print() {
     int i = 0;
     while (i < job_count) {
         if (jobs[i].status == DONE) {
-            jobs[i] = (Job){0};
+            for (int j = i + 1; j < job_count; j++) {
+                jobs[j - 1] = jobs[j];
+            }
+            job_count--;
+        } else {
+            i++;
         }
-        i++;
     }
 }
 
