@@ -8,11 +8,11 @@
 Job* jobs = NULL;
 int job_count = 0;
 
-void jobs_init() {
+void init_jobs() {
     jobs = malloc(1024 * sizeof(Job));
 }
 
-void jobs_add(pid_t pgid, char* command) {
+void add_job(pid_t pgid, char* command) {
     jobs[job_count] = (Job){
         .pid = pgid,
         .job_number = job_count + 1,
@@ -23,27 +23,7 @@ void jobs_add(pid_t pgid, char* command) {
     job_count++;
 }
 
-void jobs_print() {
-    for (int i = 0; i < job_count; i++) {
-        char marker = ' ';
-        if (i == job_count - 2) marker = '-';
-        else if (i == job_count - 1) marker = '+';
-
-        char* status_text;
-        switch (jobs[i].status) {
-            case RUNNING: status_text = "Running"; break;
-            case DONE: status_text = "Done"; break;
-            case STOPPED: status_text = "Stopped"; break;
-        }
-
-        // Super hacky
-        if (jobs[i].status == DONE) {
-            jobs[i].command[strlen(jobs[i].command) - 1] = '\0';
-        }
-
-        printf("[%d]%c  %-23s %s\n", jobs[i].job_number, marker, status_text, jobs[i].command);
-    }
-
+void delete_done_jobs() {
     int i = 0;
     while (i < job_count) {
         if (jobs[i].status == DONE) {
@@ -55,6 +35,28 @@ void jobs_print() {
             i++;
         }
     }
+}
+
+void print_job(int job_index) {
+    Job job = jobs[job_index];
+
+    char marker = ' ';
+    if (job_index == job_count - 2) marker = '-';
+    else if (job_index == job_count - 1) marker = '+';
+
+    char* status_text;
+    switch (job.status) {
+        case RUNNING: status_text = "Running"; break;
+        case DONE: status_text = "Done"; break;
+        case STOPPED: status_text = "Stopped"; break;
+    }
+
+    // Super hacky
+    if (job.status == DONE) {
+        job.command[strlen(job.command) - 1] = '\0';
+    }
+
+    printf("[%d]%c  %-23s %s\n", job.job_number, marker, status_text, job.command);
 }
 
 void sigchld_handler(int sig) {

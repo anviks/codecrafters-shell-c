@@ -53,7 +53,7 @@ void log_args(int command_count, Command* commands) {
 int main() {
     setbuf(stdout, NULL);  // Flush after every printf
     rl_attempted_completion_function = shell_completion;
-    jobs_init();
+    init_jobs();
     signal(SIGCHLD, sigchld_handler);
 
     char* histfile = getenv("HISTFILE");
@@ -155,7 +155,7 @@ int main() {
             }
 
             if (is_job) {
-                jobs_add(pgid, strdup(input));
+                add_job(pgid, strdup(input));
             }
 
             // now close pipe fd-s in the parent process
@@ -170,6 +170,13 @@ int main() {
                 while (waitpid(-pgid, NULL, 0) > 0);
             }
         }
+
+        for (int i = 0; i < job_count; i++) {
+            if (jobs[i].status == DONE) {
+                print_job(i);
+            }
+        }
+        delete_done_jobs();
 
         free(input);
 

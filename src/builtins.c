@@ -124,6 +124,9 @@ void execute_builtin_command(Command command) {
             printf("    %d  %s\n", i + 1, history[i]->line);
         }
     } else if (strcmp(command.argv[0], "jobs") == 0) {
-        jobs_print();
+        for (int i = 0; i < job_count; i++) {
+            print_job(i);
+        }
+        delete_done_jobs();
     }
 }
