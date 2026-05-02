@@ -384,13 +384,11 @@ void execute_external_command(Command command) {
     char* exec_path = find_executable(command.argv[0]);
     if (!exec_path) {
         fprintf(stderr, "%s: command not found\n", command.argv[0]);
-        return;
+        exit(127);
     }
 
     execv(exec_path, command.argv);
     exit(127);
-
-    free(exec_path);
 }
 
 void log_args(int command_count, Command* commands) {
@@ -509,7 +507,6 @@ int main() {
                         execute_external_command(command);
                     }
 
-                    restore_redirects(&command);
                     exit(0);
                 }
                 if (pgid == 0) pgid = pid;
