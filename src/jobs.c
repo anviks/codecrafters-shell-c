@@ -2,6 +2,7 @@
 #include "types.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/wait.h>
 
 Job* jobs = NULL;
@@ -35,6 +36,11 @@ void jobs_print() {
             case RUNNING: status_text = "Running"; break;
             case DONE: status_text = "Done"; break;
             case STOPPED: status_text = "Stopped"; break;
+        }
+
+        // Super hacky
+        if (jobs[i].status == DONE) {
+            jobs[i].command[strlen(jobs[i].command) - 1] = '\0';
         }
 
         printf("[%d]%c  %-23s %s\n", jobs[i].job_number, marker, status_text, jobs[i].command);
