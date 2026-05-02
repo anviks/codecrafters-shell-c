@@ -1,4 +1,5 @@
 #include "executables.h"
+#include "jobs.h"
 #include <dirent.h>
 #include <errno.h>
 #include <readline/history.h>
@@ -123,5 +124,6 @@ void execute_builtin_command(Command command) {
             printf("    %d  %s\n", i + 1, history[i]->line);
         }
     } else if (strcmp(command.argv[0], "jobs") == 0) {
+        jobs_print();
     }
 }

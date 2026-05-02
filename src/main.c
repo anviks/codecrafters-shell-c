@@ -3,9 +3,11 @@
 #include "builtins.h"
 #include "parser.h"
 #include "redirect.h"
+#include "jobs.h"
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -50,15 +52,13 @@ void log_args(int command_count, Command* commands) {
 int main() {
     setbuf(stdout, NULL);  // Flush after every printf
     rl_attempted_completion_function = shell_completion;
+    jobs_init();
 
     char* histfile = getenv("HISTFILE");
     if (histfile != NULL && strcmp(histfile, "") != 0) {
         read_history(histfile);
         history_entries_saved = history_length;
     }
-
-    Job* jobs = malloc(1024 * sizeof(Job));
-    int job_i = 0;
 
     char* input;
     while ((input = readline("$ ")) != NULL) {
@@ -83,16 +83,8 @@ int main() {
 
         if (strcmp(last_args[last_argv], "&") == 0) {
             last_args[last_argv] = NULL;
-            jobs[job_i] = (Job){
-                .command = strdup(input),
-                .job_number = job_i + 1,
-                .status = RUNNING,
-            };
-            job_i++;
             is_job = 1;
         }
-
-        free(input);
 
         if (strcmp(commands[0].argv[0], "exit") == 0) break;
 
@@ -161,8 +153,7 @@ int main() {
             }
 
             if (is_job) {
-                jobs[job_i - 1].pid = pgid;
-                printf("[%d] %d\n", jobs[job_i - 1].job_number, jobs[job_i - 1].pid);
+                jobs_add(pgid, strdup(input));
             }
 
             // now close pipe fd-s in the parent process
@@ -177,6 +168,8 @@ int main() {
                 while (waitpid(-pgid, NULL, 0) > 0);
             }
         }
+
+        free(input);
 
         for (int i = 0; i < command_count; i++) {
             for (int j = 0; commands[i].argv[j] != NULL; j++) {
