@@ -6,6 +6,7 @@
 #include "jobs.h"
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -53,6 +54,7 @@ int main() {
     setbuf(stdout, NULL);  // Flush after every printf
     rl_attempted_completion_function = shell_completion;
     jobs_init();
+    signal(SIGCHLD, sigchld_handler);
 
     char* histfile = getenv("HISTFILE");
     if (histfile != NULL && strcmp(histfile, "") != 0) {

@@ -2,6 +2,7 @@
 #include "types.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
 Job* jobs = NULL;
 int job_count = 0;
@@ -23,6 +24,8 @@ void jobs_add(pid_t pgid, char* command) {
 
 void jobs_print() {
     for (int i = 0; i < job_count; i++) {
+        if (jobs[i].pid == 0) continue;
+
         char marker = ' ';
         if (i == job_count - 2) marker = '-';
         else if (i == job_count - 1) marker = '+';
@@ -35,5 +38,28 @@ void jobs_print() {
         }
 
         printf("[%d]%c  %-23s %s\n", jobs[i].job_number, marker, status_text, jobs[i].command);
+    }
+
+    int i = 0;
+    while (i < job_count) {
+        if (jobs[i].status == DONE) {
+            jobs[i] = (Job){0};
+        }
+        i++;
+    }
+}
+
+void sigchld_handler(int sig) {
+    (void)sig;
+    int status;
+    pid_t pid;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        // find the job with this pid and mark it DONE
+        for (int i = 0; i < job_count; i++) {
+            if (jobs[i].pid == pid) {
+                jobs[i].status = DONE;
+                break;
+            }
+        }
     }
 }
