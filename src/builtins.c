@@ -7,7 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
-char* builtins[] = {"echo", "exit", "type", "pwd", "cd", "history", "jobs", NULL};
+char* builtins[] = {"echo", "exit", "type", "pwd", "cd", "history", "jobs", "complete", NULL};
 int history_entries_saved = 0;
 
 int is_builtin(char* name) {
@@ -128,5 +128,6 @@ void execute_builtin_command(Command command) {
             print_job(i);
         }
         delete_done_jobs();
+    } else if (strcmp(command.argv[0], "complete") == 0) {
     }
 }
