@@ -7,6 +7,7 @@ extern Completion* completions;
 extern int completion_count;
 void init_completions();
 void add_completion(char* command, char* completer);
+void remove_completion(char* command);
 Completion* find_completion(char* command);
 char** shell_completion(const char* text, int start, int end);
 

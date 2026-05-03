@@ -75,6 +75,8 @@ static void handle_complete(char** argv) {
     } else if (strcmp(argv[1], "-C") == 0) {
         if (argv[3] == NULL) return;
         add_completion(argv[3], argv[2]);
+    } else if (strcmp(argv[1], "-r")) {
+        remove_completion(argv[2]);
     }
 }
 

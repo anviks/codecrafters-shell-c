@@ -94,6 +94,17 @@ void add_completion(char* command, char* completer) {
     };
 }
 
+void remove_completion(char* command) {
+    for (int i = 0; i < completion_count; i++) {
+        if (strcmp(completions[i].command, command) == 0) {
+            for (int j = i + 1; j < completion_count; j++) {
+                completions[j - 1] = completions[j];
+            }
+            completion_count--;
+        }
+    }    
+}
+
 Completion* find_completion(char* command) {
     for (int i = 0; i < completion_count; i++) {
         if (strcmp(completions[i].command, command) == 0) {
