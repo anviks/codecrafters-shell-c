@@ -80,6 +80,14 @@ static void handle_complete(char** argv) {
     }
 }
 
+static void handle_declare(char** argv) {
+    if (argv[1] == NULL || argv[2] == NULL) return;
+
+    if (strcmp(argv[1], "-p")) {
+        fprintf(stderr, "declare: %s: not found\n", argv[2]);
+    }
+}
+
 void execute_builtin_command(Command command) {
     if (strcmp(command.argv[0], "echo") == 0) {
         if (command.argv[1] != NULL) {
@@ -150,5 +158,7 @@ void execute_builtin_command(Command command) {
         delete_done_jobs();
     } else if (strcmp(command.argv[0], "complete") == 0) {
         handle_complete(command.argv);
+    } else if (strcmp(command.argv[0], "declare") == 0) {
+        handle_declare(command.argv);
     }
 }
