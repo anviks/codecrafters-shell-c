@@ -44,6 +44,11 @@ static char* script_completer_generator(const char* text, int state) {
         matches = NULL;
         idx = 0;
 
+        setenv("COMP_LINE", rl_line_buffer, 1);
+        char point_str[16];
+        snprintf(point_str, sizeof(point_str), "%d", rl_point);
+        setenv("COMP_POINT", point_str, 1);
+
         char command[256];
         sscanf(rl_line_buffer, "%255s", command);
 
