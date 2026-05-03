@@ -1,5 +1,6 @@
 #include "executables.h"
 #include "jobs.h"
+#include "completions.h"
 #include <dirent.h>
 #include <errno.h>
 #include <readline/history.h>
@@ -65,7 +66,15 @@ static void handle_complete(char** argv) {
     if (argv[1] == NULL || argv[2] == NULL) return;
 
     if (strcmp(argv[1], "-p") == 0) {
-        fprintf(stderr, "complete: %s: no completion specification\n", argv[2]);
+        Completion* completion = find_completion(argv[2]);
+        if (completion == NULL) {
+            fprintf(stderr, "complete: %s: no completion specification\n", argv[2]);
+        } else {
+            printf("complete -C '%s' %s\n", completion->completer, completion->command);
+        }
+    } else if (strcmp(argv[1], "-C") == 0) {
+        if (argv[3] == NULL) return;
+        add_completion(argv[3], argv[2]);
     }
 }
 

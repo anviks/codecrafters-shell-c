@@ -4,6 +4,7 @@
 #include "parser.h"
 #include "redirect.h"
 #include "jobs.h"
+#include "completions.h"
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <signal.h>
@@ -54,6 +55,7 @@ int main() {
     setbuf(stdout, NULL);  // Flush after every printf
     rl_attempted_completion_function = shell_completion;
     init_jobs();
+    init_completions();
     signal(SIGCHLD, sigchld_handler);
 
     char* histfile = getenv("HISTFILE");

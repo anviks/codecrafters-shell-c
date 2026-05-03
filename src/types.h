@@ -23,4 +23,9 @@ typedef struct {
     char* command;
 } Job;
 
+typedef struct {
+    char* command;
+    char* completer;
+} Completion;
+
 #endif
