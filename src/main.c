@@ -8,39 +8,11 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
-static char* completion_generator(const char* text, int state) {
-    static int builtin_idx;
-    static char** exec_matches;
-    static int exec_idx;
-
-    if (state == 0) {
-        builtin_idx = 0;
-        exec_matches = find_executable_completions((char*)text);
-        exec_idx = 0;
-    }
-
-    while (builtins[builtin_idx] != NULL) {
-        char* b = builtins[builtin_idx++];
-        if (strncmp(b, text, strlen(text)) == 0) return strdup(b);
-    }
-
-    if (exec_matches) {
-        while (exec_matches[exec_idx] != NULL) return exec_matches[exec_idx++];
-    }
-
-    return NULL;
-}
-
-static char** shell_completion(const char* text, int start, int end) {
-    (void)end;
-    if (start != 0) return NULL;
-    return rl_completion_matches(text, completion_generator);
-}
 
 void log_args(int command_count, Command* commands) {
     for (int i = 0; i < command_count; i++) {
