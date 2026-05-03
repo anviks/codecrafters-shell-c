@@ -79,7 +79,7 @@ static char* completion_generator(const char* text, int state) {
     }
 
     if (exec_matches) {
-        while (exec_matches[exec_idx] != NULL) return exec_matches[exec_idx++];
+        while (exec_matches[exec_idx] != NULL) return strdup(exec_matches[exec_idx++]);
     }
 
     return NULL;

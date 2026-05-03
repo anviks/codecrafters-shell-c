@@ -16,7 +16,8 @@ static int cmp(const void* a, const void* b) {
 }
 
 char** find_executable_completions(char* name) {
-    char** result = malloc(1024 * sizeof(char*));
+    int capacity = 1024;
+    char** result = malloc(capacity * sizeof(char*));
     int i = 0;
     char* path_env = strdup(getenv("PATH"));
     char *path, *path_state;
@@ -36,6 +37,10 @@ char** find_executable_completions(char* name) {
                     continue;
                 }
                 free(fullpath);
+                if (i + 1 >= capacity) {
+                    capacity *= 2;
+                    result = realloc(result, capacity * sizeof(char*));
+                }
                 result[i++] = strdup(dir->d_name);
             }
             closedir(d);
