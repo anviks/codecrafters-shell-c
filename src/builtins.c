@@ -9,7 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 
-char* builtins[] = {"echo", "exit", "type", "pwd", "cd", "history", "jobs", "complete", NULL};
+char* builtins[] = {"echo", "exit", "type", "pwd", "cd", "history", "jobs", "complete", "declare", NULL};
 int history_entries_saved = 0;
 
 int is_builtin(char* name) {
