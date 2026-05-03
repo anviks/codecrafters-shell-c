@@ -42,7 +42,7 @@ static char* completion_generator(const char* text, int state) {
 
     if (state == 0) {
         builtin_idx = 0;
-        exec_matches = find_executable_completions((char*)text);
+        exec_matches = NULL;
         exec_idx = 0;
         completer_matches = NULL;
         completer_idx = 0;
@@ -60,6 +60,8 @@ static char* completion_generator(const char* text, int state) {
                 completer_matches[i] = NULL;
                 pclose(f);
             }
+        } else {
+            exec_matches = find_executable_completions((char*)text);
         }
     }
 
