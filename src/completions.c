@@ -101,6 +101,7 @@ void remove_completion(char* command) {
                 completions[j - 1] = completions[j];
             }
             completion_count--;
+            break;
         }
     }    
 }
