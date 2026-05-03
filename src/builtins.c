@@ -83,7 +83,7 @@ static void handle_complete(char** argv) {
 static void handle_declare(char** argv) {
     if (argv[1] == NULL || argv[2] == NULL) return;
 
-    if (strcmp(argv[1], "-p")) {
+    if (strcmp(argv[1], "-p") == 0) {
         fprintf(stderr, "declare: %s: not found\n", argv[2]);
     }
 }
