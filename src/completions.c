@@ -43,7 +43,22 @@ static char* script_completer_generator(const char* text, int state) {
     if (state == 0) {
         matches = NULL;
         idx = 0;
-        FILE* f = popen(current_completer, "r");
+
+        char command[256];
+        sscanf(rl_line_buffer, "%255s", command);
+
+        int pos = rl_point - strlen(text) - 1;
+        while (pos > 0 && rl_line_buffer[pos] == ' ') pos--;
+        int end = pos;
+        while (pos > 0 && rl_line_buffer[pos - 1] != ' ') pos--;
+        char prev[256];
+        strncpy(prev, rl_line_buffer + pos, end - pos + 1);
+        prev[end - pos + 1] = '\0';
+
+        char script[2048];
+        snprintf(script, sizeof(script), "%s %s %s %s", current_completer, command, text, prev);
+
+        FILE* f = popen(script, "r");
         if (f) {
             matches = malloc(1024 * sizeof(char*));
             int i = 0;
