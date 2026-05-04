@@ -67,7 +67,7 @@ static void handle_complete(char** argv) {
     if (argv[1] == NULL || argv[2] == NULL) return;
 
     if (strcmp(argv[1], "-p") == 0) {
-        Completion* completion = array_find(completions, argv[2]);
+        Completion* completion = array_find(&completions, argv[2]);
         if (completion == NULL) {
             fprintf(stderr, "complete: %s: no completion specification\n", argv[2]);
         } else {
@@ -75,12 +75,12 @@ static void handle_complete(char** argv) {
         }
     } else if (strcmp(argv[1], "-C") == 0) {
         if (argv[3] == NULL) return;
-        array_add(completions, &(Completion){
+        array_add(&completions, &(Completion){
             .command = strdup(argv[3]),
             .completer = strdup(argv[2])
         });
     } else if (strcmp(argv[1], "-r") == 0) {
-        array_remove(completions, argv[2]);
+        array_remove(&completions, argv[2]);
     }
 }
 

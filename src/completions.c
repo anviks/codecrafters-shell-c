@@ -9,7 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-Array* completions;
+Array completions;
 static char* current_completer = NULL;
 
 static const char* completion_key_getter(const void* p) {
@@ -17,7 +17,7 @@ static const char* completion_key_getter(const void* p) {
 }
 
 void init_completions() {
-    array_init(completions, sizeof(Completion), completion_key_getter);
+    array_init(&completions, sizeof(Completion), completion_key_getter);
 }
 
 static char* builtin_exec_generator(const char* text, int state) {
@@ -97,7 +97,7 @@ char** shell_completion(const char* text, int start, int end) {
 
     char cmd[256];
     sscanf(rl_line_buffer, "%255s", cmd);
-    Completion* completion = array_find(completions, cmd);
+    Completion* completion = array_find(&completions, cmd);
     if (!completion) return NULL;
 
     current_completer = completion->completer;
