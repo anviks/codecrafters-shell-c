@@ -1,3 +1,4 @@
+#include "array.h"
 #include "builtins.h"
 #include "executables.h"
 #include "types.h"
@@ -8,9 +9,16 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-Completion* completions = NULL;
-int completion_count = 0;
+Array* completions;
 static char* current_completer = NULL;
+
+static const char* completion_key_getter(const void* p) {
+    return ((Completion*)p)->command;
+}
+
+void init_completions() {
+    array_init(completions, sizeof(Completion), completion_key_getter);
+}
 
 static char* builtin_exec_generator(const char* text, int state) {
     static int builtin_idx;
@@ -83,46 +91,13 @@ static char* script_completer_generator(const char* text, int state) {
     return NULL;
 }
 
-void init_completions() {
-    completions = malloc(1024 * sizeof(Completion));
-}
-
-void add_completion(char* command, char* completer) {
-    completions[completion_count++] = (Completion){
-        .command = strdup(command),
-        .completer = strdup(completer)
-    };
-}
-
-void remove_completion(char* command) {
-    for (int i = 0; i < completion_count; i++) {
-        if (strcmp(completions[i].command, command) == 0) {
-            for (int j = i + 1; j < completion_count; j++) {
-                completions[j - 1] = completions[j];
-            }
-            completion_count--;
-            break;
-        }
-    }    
-}
-
-Completion* find_completion(char* command) {
-    for (int i = 0; i < completion_count; i++) {
-        if (strcmp(completions[i].command, command) == 0) {
-            return &completions[i];
-        }
-    }
-
-    return NULL;
-}
-
 char** shell_completion(const char* text, int start, int end) {
     (void)end;
     if (start == 0) return rl_completion_matches(text, builtin_exec_generator);
 
     char cmd[256];
     sscanf(rl_line_buffer, "%255s", cmd);
-    Completion* completion = find_completion(cmd);
+    Completion* completion = array_find(completions, cmd);
     if (!completion) return NULL;
 
     current_completer = completion->completer;
