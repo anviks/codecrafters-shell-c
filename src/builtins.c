@@ -96,16 +96,9 @@ static void handle_declare(char** argv) {
         if (!variable) fprintf(stderr, "declare: %s: not found\n", argv[2]);
         else printf("declare -- %s=\"%s\"\n", variable->name, variable->value);
     } else {
-        char* name = malloc(strlen(argv[1]) + 1);
-        char* value = malloc(strlen(argv[1]) + 1);
-        char* iter = argv[1];
-        int i = 0;
-        while (*iter != '=') name[i++] = *iter++;
-        name[i++] = '\0';
-        iter++;
-        i = 0;
-        while (*iter != '\0') value[i++] = *iter++;
-        value[i++] = '\0';
+        char* eq = strchr(argv[1], '=');
+        char* name = strndup(argv[1], eq - argv[1]);
+        char* value = strdup(eq + 1);
         array_add(&variables, &(Variable){.name = name, .value = value});
     }
 }
