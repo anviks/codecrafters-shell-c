@@ -3,6 +3,7 @@
 #include "executables.h"
 #include "jobs.h"
 #include "completions.h"
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <readline/history.h>
@@ -96,6 +97,10 @@ static void handle_declare(char** argv) {
         if (!variable) fprintf(stderr, "declare: %s: not found\n", argv[2]);
         else printf("declare -- %s=\"%s\"\n", variable->name, variable->value);
     } else {
+        if (isdigit(argv[1][0])) {
+            fprintf(stderr, "declare: `%s': not a valid identifier\n", argv[1]);
+            return;
+        }
         char* eq = strchr(argv[1], '=');
         char* name = strndup(argv[1], eq - argv[1]);
         char* value = strdup(eq + 1);
