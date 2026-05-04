@@ -1,3 +1,4 @@
+#include "builtins.h"
 #include "array.h"
 #include "executables.h"
 #include "jobs.h"
@@ -84,11 +85,28 @@ static void handle_complete(char** argv) {
     }
 }
 
+Array variables;
+
 static void handle_declare(char** argv) {
-    if (argv[1] == NULL || argv[2] == NULL) return;
+    if (argv[1] == NULL) return;
 
     if (strcmp(argv[1], "-p") == 0) {
-        fprintf(stderr, "declare: %s: not found\n", argv[2]);
+        if (argv[2] == NULL) return;
+        Variable* variable = array_find(&variables, argv[2]);
+        if (!variable) fprintf(stderr, "declare: %s: not found\n", argv[2]);
+        else printf("declare -- %s=\"%s\"\n", variable->name, variable->value);
+    } else {
+        char* name = malloc(strlen(argv[1]) + 1);
+        char* value = malloc(strlen(argv[1]) + 1);
+        char* iter = argv[1];
+        int i = 0;
+        while (*iter != '=') name[i++] = *iter++;
+        name[i++] = '\0';
+        iter++;
+        i = 0;
+        while (*iter != '\0') value[i++] = *iter++;
+        value[i++] = '\0';
+        array_add(&variables, &(Variable){.name = name, .value = value});
     }
 }
 

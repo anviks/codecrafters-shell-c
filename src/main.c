@@ -1,3 +1,4 @@
+#include "array.h"
 #include "types.h"
 #include "executables.h"
 #include "builtins.h"
@@ -23,11 +24,16 @@ void log_args(int command_count, Command* commands) {
     }
 }
 
+static const char* variable_key_getter(const void* p) {
+    return ((Variable*)p)->name;
+}
+
 int main() {
     setbuf(stdout, NULL);  // Flush after every printf
     rl_attempted_completion_function = shell_completion;
     init_jobs();
     init_completions();
+    array_init(&variables, sizeof(Variable), variable_key_getter);
     signal(SIGCHLD, sigchld_handler);
 
     char* histfile = getenv("HISTFILE");
