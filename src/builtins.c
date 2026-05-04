@@ -97,10 +97,19 @@ static void handle_declare(char** argv) {
         if (!variable) fprintf(stderr, "declare: %s: not found\n", argv[2]);
         else printf("declare -- %s=\"%s\"\n", variable->name, variable->value);
     } else {
-        if (isdigit(argv[1][0])) {
+        int invalid = 0;
+        if (isdigit(argv[1][0])) invalid = 1;
+        for (char* p = argv[1]; *p; p++) {
+            if (!isalnum(*p) && *p != '_') {
+                invalid = 1;
+                break;
+            }
+        }
+        if (invalid) {
             fprintf(stderr, "declare: `%s': not a valid identifier\n", argv[1]);
             return;
         }
+
         char* eq = strchr(argv[1], '=');
         char* name = strndup(argv[1], eq - argv[1]);
         char* value = strdup(eq + 1);
