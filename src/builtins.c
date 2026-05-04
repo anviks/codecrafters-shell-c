@@ -99,6 +99,7 @@ static void handle_declare(char** argv) {
         char* eq = strchr(argv[1], '=');
         char* name = strndup(argv[1], eq - argv[1]);
         char* value = strdup(eq + 1);
+        array_remove(&variables, name);
         array_add(&variables, &(Variable){.name = name, .value = value});
     }
 }
