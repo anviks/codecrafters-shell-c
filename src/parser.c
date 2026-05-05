@@ -40,6 +40,7 @@ int parse_commands(char* input, Command* commands) {
     char* cur_arg = malloc(1024);
     char* cur_var = malloc(1024);
     int cur_cmd_i = 0, cur_argv_i = 0, cur_arg_i = 0, cur_var_i = 0;
+    strcat(input, " ");
 
     for (int i = 0; input[i] != '\0'; i++) {
         char c = input[i];
@@ -104,8 +105,9 @@ int parse_commands(char* input, Command* commands) {
                 cur_var[cur_var_i] = '\0';
                 Variable* var = array_find(&variables, cur_var);
                 if (var) {
-                    cur_arg = strdup(var->value);
-                    cur_arg_i += strlen(cur_arg);
+                    // Concat running argument with variable value (to handle cases like `echo o$var`)
+                    memcpy(cur_arg + cur_arg_i, var->value, strlen(var->value));
+                    cur_arg_i += strlen(var->value);
                 }
                 cur_var_i = 0;
                 state = NORMAL;
@@ -114,15 +116,15 @@ int parse_commands(char* input, Command* commands) {
         }
     }
 
-    if (cur_arg_i > 0) {
-        cur_arg[cur_arg_i] = '\0';
-        if (redirect_mode == NONE) {
-            cur_cmd.argv[cur_argv_i++] = strdup(cur_arg);
-        } else {
-            apply_redirect(&cur_cmd, redirect_mode, cur_arg);
-            redirect_mode = NONE;
-        }
-    }
+    // if (cur_arg_i > 0) {
+    //     cur_arg[cur_arg_i] = '\0';
+    //     if (redirect_mode == NONE) {
+    //         cur_cmd.argv[cur_argv_i++] = strdup(cur_arg);
+    //     } else {
+    //         apply_redirect(&cur_cmd, redirect_mode, cur_arg);
+    //         redirect_mode = NONE;
+    //     }
+    // }
 
     free(cur_arg);
 
