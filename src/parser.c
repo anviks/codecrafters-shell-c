@@ -97,7 +97,7 @@ int parse_commands(char* input, Command* commands) {
                 cur_arg[cur_arg_i++] = c;
             break;
         case IN_VARIABLE:
-            if (isalnum(c)) {
+            if (isalnum(c) || c == '_') {
                 cur_var[cur_var_i++] = c;
             } else {
                 i--;
