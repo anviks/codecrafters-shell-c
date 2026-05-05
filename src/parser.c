@@ -1,6 +1,9 @@
-#include "types.h"
+#include "parser.h"
 #include <stdlib.h>
 #include <string.h>
+
+typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
+typedef enum { NONE, STDOUT, STDERR, APPEND_STDOUT, APPEND_STDERR } RedirectMode;
 
 static Command new_command() {
     Command command = {0};

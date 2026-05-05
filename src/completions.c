@@ -1,7 +1,7 @@
+#include "completions.h"
 #include "array.h"
 #include "builtins.h"
 #include "executables.h"
-#include "types.h"
 #include <readline/readline.h>
 #include <stdio.h>
 #include <stdlib.h>

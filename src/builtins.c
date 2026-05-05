@@ -3,6 +3,7 @@
 #include "executables.h"
 #include "jobs.h"
 #include "completions.h"
+#include "parser.h"
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>

@@ -1,7 +1,15 @@
 #ifndef JOBS_H
 #define JOBS_H
 
-#include "types.h"
+#include <sys/types.h>
+
+typedef enum { RUNNING, STOPPED, DONE } JobStatus;
+typedef struct {
+    pid_t pid;
+    int job_number;
+    JobStatus status;
+    char* command;
+} Job;
 
 extern Job* jobs;
 extern int job_count;

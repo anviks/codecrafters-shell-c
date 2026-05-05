@@ -1,7 +1,7 @@
 #ifndef EXECUTABLES_H
 #define EXECUTABLES_H
 
-#include "types.h"
+#include "parser.h"
 
 char* find_executable(char* name);
 char** find_executable_completions(char* name);

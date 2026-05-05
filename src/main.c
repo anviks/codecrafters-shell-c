@@ -1,5 +1,4 @@
 #include "array.h"
-#include "types.h"
 #include "executables.h"
 #include "builtins.h"
 #include "parser.h"

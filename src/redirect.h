@@ -1,7 +1,7 @@
 #ifndef REDIRECT_H
 #define REDIRECT_H
 
-#include "types.h"
+#include "parser.h"
 
 void apply_redirects(Command* cmd);
 void restore_redirects(Command* cmd);

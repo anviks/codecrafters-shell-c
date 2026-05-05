@@ -2,7 +2,7 @@
 #define BUILTINS_H
 
 #include "array.h"
-#include "types.h"
+#include "parser.h"
 
 extern char* builtins[];
 extern int history_entries_saved;
