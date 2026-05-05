@@ -1,8 +1,11 @@
 #include "parser.h"
+#include "array.h"
+#include "builtins.h"
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE } State;
+typedef enum { NORMAL, IN_SINGLE_QUOTE, IN_DOUBLE_QUOTE, IN_VARIABLE } State;
 typedef enum { NONE, STDOUT, STDERR, APPEND_STDOUT, APPEND_STDERR } RedirectMode;
 
 static Command new_command() {
@@ -35,7 +38,8 @@ int parse_commands(char* input, Command* commands) {
     State state = NORMAL;
     Command cur_cmd = new_command();
     char* cur_arg = malloc(1024);
-    int cur_cmd_i = 0, cur_argv_i = 0, cur_arg_i = 0;
+    char* cur_var = malloc(1024);
+    int cur_cmd_i = 0, cur_argv_i = 0, cur_arg_i = 0, cur_var_i = 0;
 
     for (int i = 0; input[i] != '\0'; i++) {
         char c = input[i];
@@ -73,6 +77,8 @@ int parse_commands(char* input, Command* commands) {
                     }
                     cur_arg_i = 0;
                 }
+            } else if (c == '$') {
+                state = IN_VARIABLE;
             } else
                 cur_arg[cur_arg_i++] = c;
             break;
@@ -89,6 +95,21 @@ int parse_commands(char* input, Command* commands) {
                 state = NORMAL;
             else
                 cur_arg[cur_arg_i++] = c;
+            break;
+        case IN_VARIABLE:
+            if (isalnum(c)) {
+                cur_var[cur_var_i++] = c;
+            } else {
+                i--;
+                cur_var[cur_var_i] = '\0';
+                Variable* var = array_find(&variables, cur_var);
+                if (var) {
+                    cur_arg = strdup(var->value);
+                    cur_arg_i += strlen(cur_arg);
+                }
+                cur_var_i = 0;
+                state = NORMAL;
+            }
             break;
         }
     }
