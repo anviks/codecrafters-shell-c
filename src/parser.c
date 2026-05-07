@@ -40,6 +40,7 @@ int parse_commands(char* input, Command* commands) {
     char* cur_arg = malloc(1024);
     char* cur_var = malloc(1024);
     int cur_cmd_i = 0, cur_argv_i = 0, cur_arg_i = 0, cur_var_i = 0;
+    int in_variable_braces = 0;
 
     for (int i = 0; i == 0 || input[i - 1] != '\0'; i++) {
         char c = input[i];
@@ -99,6 +100,11 @@ int parse_commands(char* input, Command* commands) {
         case IN_VARIABLE:
             if (isalnum(c) || c == '_') {
                 cur_var[cur_var_i++] = c;
+            } else if (c == '{') {
+                in_variable_braces = 1;
+            } else if (c == '}' && in_variable_braces) {
+                in_variable_braces = 0;
+                state = NORMAL;
             } else {
                 i--;
                 cur_var[cur_var_i] = '\0';
@@ -114,16 +120,6 @@ int parse_commands(char* input, Command* commands) {
             break;
         }
     }
-
-    // if (cur_arg_i > 0) {
-    //     cur_arg[cur_arg_i] = '\0';
-    //     if (redirect_mode == NONE) {
-    //         cur_cmd.argv[cur_argv_i++] = strdup(cur_arg);
-    //     } else {
-    //         apply_redirect(&cur_cmd, redirect_mode, cur_arg);
-    //         redirect_mode = NONE;
-    //     }
-    // }
 
     free(cur_arg);
 
