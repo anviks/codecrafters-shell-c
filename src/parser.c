@@ -98,15 +98,21 @@ int parse_commands(char* input, Command* commands) {
                 cur_arg[cur_arg_i++] = c;
             break;
         case IN_VARIABLE:
+            int terminate_var = 0;
+
             if (isalnum(c) || c == '_') {
                 cur_var[cur_var_i++] = c;
             } else if (c == '{') {
                 in_variable_braces = 1;
             } else if (c == '}' && in_variable_braces) {
                 in_variable_braces = 0;
-                state = NORMAL;
+                terminate_var = 1;
             } else {
                 i--;
+                terminate_var = 1;
+            }
+            
+            if (terminate_var) {
                 cur_var[cur_var_i] = '\0';
                 Variable* var = array_find(&variables, cur_var);
                 if (var) {
@@ -117,6 +123,7 @@ int parse_commands(char* input, Command* commands) {
                 cur_var_i = 0;
                 state = NORMAL;
             }
+
             break;
         }
     }
