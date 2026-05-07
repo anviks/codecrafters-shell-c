@@ -1,3 +1,4 @@
+#include "array.h"
 #include "parser.h"
 #include <dirent.h>
 #include <stdio.h>
@@ -15,10 +16,7 @@ static int cmp(const void* a, const void* b) {
     return strcmp(*(const char**)a, *(const char**)b);
 }
 
-char** find_executable_completions(char* name) {
-    int capacity = 1024;
-    char** result = malloc(capacity * sizeof(char*));
-    int i = 0;
+void find_executable_completions(Array* result, char* name) {
     char* path_env = strdup(getenv("PATH"));
     char *path, *path_state;
     path = strtok_r(path_env, PATH_LIST_SEPARATOR, &path_state);
@@ -37,21 +35,15 @@ char** find_executable_completions(char* name) {
                     continue;
                 }
                 free(fullpath);
-                if (i + 1 >= capacity) {
-                    capacity *= 2;
-                    result = realloc(result, capacity * sizeof(char*));
-                }
-                result[i++] = strdup(dir->d_name);
+                char* match = strdup(dir->d_name);
+                array_add(result, &match);
             }
             closedir(d);
         }
         path = strtok_r(NULL, PATH_LIST_SEPARATOR, &path_state);
     }
     free(path_env);
-    qsort(result, i, sizeof(char*), cmp);
-    result[i] = NULL;
-
-    return result;
+    qsort(result->items, result->count, sizeof(char*), cmp);
 }
 
 char* find_executable(char* name) {

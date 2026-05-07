@@ -16,6 +16,13 @@ void array_init(Array* a, size_t item_size, KeyFn get_key) {
     };
 }
 
+void array_free(Array* a) {
+    free(a->items);
+    a->items = NULL;
+    a->count = 0;
+    a->capacity = 0;
+}
+
 void* array_at(Array* a, size_t index) {
     return (char*)a->items + index * a->item_size;
 }

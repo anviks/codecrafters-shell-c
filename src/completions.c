@@ -22,12 +22,20 @@ void init_completions() {
 
 static char* builtin_exec_generator(const char* text, int state) {
     static int builtin_idx;
-    static char** exec_matches;
+    static Array exec_matches;
     static int exec_idx;
+    static bool initialized = false;
 
     if (state == 0) {
         builtin_idx = 0;
-        exec_matches = find_executable_completions((char*)text);
+        if (initialized) {
+            for (int i = 0; i < exec_matches.count; i++)
+                free(*(char**)array_at(&exec_matches, i));
+            array_free(&exec_matches);
+        }
+        array_init(&exec_matches, sizeof(char*), NULL);
+        initialized = true;
+        find_executable_completions(&exec_matches, (char*)text);
         exec_idx = 0;
     }
 
@@ -36,9 +44,8 @@ static char* builtin_exec_generator(const char* text, int state) {
         if (strncmp(b, text, strlen(text)) == 0) return strdup(b);
     }
 
-    if (exec_matches) {
-        while (exec_matches[exec_idx] != NULL) return strdup(exec_matches[exec_idx++]);
-    }
+    while (exec_idx < exec_matches.count)
+        return strdup(*(char**)array_at(&exec_matches, exec_idx++));
 
     return NULL;
 }

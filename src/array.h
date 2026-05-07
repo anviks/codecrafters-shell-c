@@ -13,6 +13,7 @@ typedef struct {
 } Array;
 
 void array_init(Array* a, size_t item_size, KeyFn get_key);
+void array_free(Array* a);
 void* array_at(Array* a, size_t index);
 void array_add(Array* a, void* item);
 void array_remove_at(Array* a, size_t index);
