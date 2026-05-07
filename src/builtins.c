@@ -15,6 +15,15 @@
 
 char* builtins[] = {"echo", "exit", "type", "pwd", "cd", "history", "jobs", "complete", "declare", NULL};
 int history_entries_saved = 0;
+Array variables;
+
+static const char* variable_key_getter(const void* p) {
+    return ((Variable*)p)->name;
+}
+
+void init_builtins() {
+    array_init(&variables, sizeof(Variable), variable_key_getter);
+}
 
 int is_builtin(char* name) {
     for (int i = 0; builtins[i] != NULL; i++)
@@ -86,8 +95,6 @@ static void handle_complete(char** argv) {
         array_remove(&completions, argv[2]);
     }
 }
-
-Array variables;
 
 static void handle_declare(char** argv) {
     if (argv[1] == NULL) return;
@@ -184,7 +191,7 @@ void execute_builtin_command(Command command) {
             printf("    %d  %s\n", i + 1, history[i]->line);
         }
     } else if (strcmp(command.argv[0], "jobs") == 0) {
-        for (int i = 0; i < job_count; i++) {
+        for (int i = 0; i < jobs.count; i++) {
             print_job(i);
         }
         delete_done_jobs();

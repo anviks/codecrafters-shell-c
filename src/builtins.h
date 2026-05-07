@@ -13,6 +13,7 @@ typedef struct {
     char* value;
 } Variable;
 
+void init_builtins();
 int is_builtin(char* name);
 void execute_builtin_command(Command command);
 

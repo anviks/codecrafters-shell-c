@@ -1,6 +1,7 @@
 #ifndef JOBS_H
 #define JOBS_H
 
+#include "array.h"
 #include <sys/types.h>
 
 typedef enum { RUNNING, STOPPED, DONE } JobStatus;
@@ -11,8 +12,7 @@ typedef struct {
     char* command;
 } Job;
 
-extern Job* jobs;
-extern int job_count;
+extern Array jobs;
 
 void init_jobs();
 void add_job(pid_t pgid, char* command);

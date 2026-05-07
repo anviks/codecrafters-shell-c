@@ -1,7 +1,5 @@
-#include "array.h"
 #include "executables.h"
 #include "builtins.h"
-#include "parser.h"
 #include "redirect.h"
 #include "jobs.h"
 #include "completions.h"
@@ -23,16 +21,12 @@ void log_args(int command_count, Command* commands) {
     }
 }
 
-static const char* variable_key_getter(const void* p) {
-    return ((Variable*)p)->name;
-}
-
 int main() {
     setbuf(stdout, NULL);  // Flush after every printf
     rl_attempted_completion_function = shell_completion;
     init_jobs();
     init_completions();
-    array_init(&variables, sizeof(Variable), variable_key_getter);
+    init_builtins();
     signal(SIGCHLD, sigchld_handler);
 
     char* histfile = getenv("HISTFILE");
@@ -150,8 +144,8 @@ int main() {
             }
         }
 
-        for (int i = 0; i < job_count; i++) {
-            if (jobs[i].status == DONE) {
+        for (int i = 0; i < jobs.count; i++) {
+            if (((Job*)array_at(&jobs, i))->status == DONE) {
                 print_job(i);
             }
         }
