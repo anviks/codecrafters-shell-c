@@ -115,6 +115,16 @@ int parse_commands(char* input, Command* commands) {
         }
     }
 
+    // if (cur_arg_i > 0) {
+    //     cur_arg[cur_arg_i] = '\0';
+    //     if (redirect_mode == NONE) {
+    //         cur_cmd.argv[cur_argv_i++] = strdup(cur_arg);
+    //     } else {
+    //         apply_redirect(&cur_cmd, redirect_mode, cur_arg);
+    //         redirect_mode = NONE;
+    //     }
+    // }
+
     free(cur_arg);
 
     push_command(commands, &cur_cmd_i, &cur_cmd, cur_argv_i);
